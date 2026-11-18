@@ -1,0 +1,1 @@
+Implement the behavior in CONTRACT.md, following CLAUDE.md. Fix solution.mjs and verify the important edge cases. Summarize the changes and checks.

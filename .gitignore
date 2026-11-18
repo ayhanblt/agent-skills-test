@@ -1,0 +1,15 @@
+runs/*
+!runs/.gitkeep
+scoring/*
+!scoring/.gitkeep
+reports/*
+!reports/.gitkeep
+pilot/*
+!pilot/.gitkeep
+.local/
+__pycache__/
+node_modules/
+
+# Local API secrets must never enter the research repository.
+.env
+.env.*

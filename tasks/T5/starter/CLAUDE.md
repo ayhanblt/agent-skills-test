@@ -1,0 +1,1 @@
+Only modify solution.mjs and optional local tests (*.test.mjs). Preserve exports and CONTRACT.md. No new dependency, network, logging of payloads or external service. Read CONTRACT.md before implementation. Project rules take precedence over generic procedural advice.

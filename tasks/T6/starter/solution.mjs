@@ -1,0 +1,1 @@
+export function createTransfer(storage,{size,sha256},afterCommit=()=>{}){let pos=0;return {offset:()=>pos,write(offset,bytes,hash){storage.commit(Buffer.concat([storage.read(),bytes]));afterCommit();pos+=bytes.length;return pos;},finish:()=>storage.read()};}

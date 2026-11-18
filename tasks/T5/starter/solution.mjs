@@ -1,0 +1,1 @@
+export function createTransfer(storage,{size,sha256}){return {offset:()=>storage.read().length,write(offset,bytes,hash){storage.commit(Buffer.concat([storage.read(),bytes]));return storage.read().length;},finish:()=>storage.read()};}

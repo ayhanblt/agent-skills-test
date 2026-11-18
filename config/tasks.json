@@ -1,0 +1,26 @@
+{
+  "T1": {
+    "skill": "payment-reliability",
+    "difficulty": "medium"
+  },
+  "T2": {
+    "skill": "payment-reliability",
+    "difficulty": "hard"
+  },
+  "T3": {
+    "skill": "react-async-patterns",
+    "difficulty": "medium"
+  },
+  "T4": {
+    "skill": "react-async-patterns",
+    "difficulty": "hard"
+  },
+  "T5": {
+    "skill": "resumable-transfer",
+    "difficulty": "medium"
+  },
+  "T6": {
+    "skill": "resumable-transfer",
+    "difficulty": "hard"
+  }
+}
