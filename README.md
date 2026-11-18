@@ -37,19 +37,19 @@ npm ci --ignore-scripts
 npm test
 python3 scripts/experiment.py build
 python3 scripts/selfcheck.py --docker
-# Bir kez abonelik token'ını oluşturun ve yerel olarak kaydedin:
-claude setup-token
-python3 scripts/configure.py --claude
-python3 scripts/configure.py --typesafe
+# .env mevcut değilse şablondan oluşturun.
+test -e .env || (umask 077; cp .env.example .env)
+open -e .env
+python3 scripts/experiment.py login
 python3 scripts/experiment.py preflight
 python3 scripts/experiment.py pilot --task T2 --condition A
 ```
 
-Claude Code **kendi Claude aboneliğinizi** kullanır. `claude setup-token` tarayıcıda abonelik hesabınızla yetkilendirme açar; terminalde üretilen token'ı `configure.py --claude` istemine yapıştırın. TypeSafe anahtarını `configure.py --typesafe` istemine yapıştırın. Girişler ekranda görünmez. Değerler yalnızca `.local/secrets.json` içinde, kullanıcıya özel dosya izniyle tutulur; Git'e, raporlara veya container komut kaydına yazılmaz. Bu dosyayı sohbete göndermeyin.
+TypeSafe anahtarını `.env` içinde `TYPESAFE_API_KEY=` satırına yazıp kaydedin. `.env.example` Git'e eklenebilir. `.env` yalnızca Mac'teki Jev işlemleri için okunur.
 
-Araştırma script'i anahtarları bu yerel dosyadan otomatik okur. Claude container'ına yalnızca abonelik token'ı verilir; TypeSafe anahtarı verilmez. ANTHROPIC_API_KEY kullanılmaz. Her koşunun ayarları ve oturumu yine sıfırdan oluşturulur; ortak kişisel Claude klasörü bağlanmaz.
+`login` komutu Docker içindeki normal Claude Code abonelik girişini açar. Terminalde gösterilen bağlantıyı tarayıcıda açın ve istenirse kodu terminale yapıştırın. Docker bu girişi ayrı bir alanda saklar. Her koşu sıfırdan başlar ve yalnızca giriş bilgilerini geçici olarak kullanır. Girişin süresi dolarsa `login` komutunu yeniden çalıştırın. [Claude Code giriş belgeleri](https://code.claude.com/docs/en/authentication).
 
-Preflight `claude-sonnet-5-5` ve pinned Jev erişimini gerçek çağrıyla doğrular; model yoksa durur, başka modele geçmez. Claude çağrıları abonelik limitlerini, Jev çağrıları TypeSafe bakiyesini kullanır. Claude'un raporladığı USD değeri varsa API eşdeğeri tahmin olarak ayrı tutulur; gerçek koşu başına abonelik maliyeti bilinmediği için `cost_usd=null` kalır. [Resmî abonelik token yöntemi](https://code.claude.com/docs/en/authentication#generate-a-long-lived-token).
+Preflight `claude-sonnet-5-5` ve pinned Jev erişimini gerçek çağrıyla doğrular; model yoksa durur, başka modele geçmez. Claude çağrıları abonelik limitlerini, Jev çağrıları TypeSafe bakiyesini kullanır. Claude'un raporladığı USD değeri varsa API eşdeğeri tahmin olarak ayrı tutulur; gerçek koşu başına abonelik maliyeti bilinmediği için `cost_usd=null` kalır.
 
 ### Pilot → ana koşular
 T2, T4, T6'nın her biri için A, B, C pilotlarını birer kez çalıştırın (toplam 9); her komut benzersiz kayıt oluşturur. Hiçbir pilot ana hücreye taşınmaz. Kalibrasyon notundan sonra:

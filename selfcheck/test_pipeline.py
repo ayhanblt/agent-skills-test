@@ -45,27 +45,41 @@ class Pipeline(unittest.TestCase):
   for k,v in e.questions().items():self.assertEqual(list(v['criteria']),list(reversed(list(e.questions(True)[k]['criteria']))))
  def test_secrets_are_local_and_do_not_change_research_fingerprint(self):
   fingerprint=e.input_id()
-  e.save(self.root/'.local/secrets.json',{'TYPESAFE_API_KEY':'fake-local-key'})
-  with patch.dict(os.environ,{'TYPESAFE_API_KEY':''}):self.assertEqual(e.get_secret('TYPESAFE_API_KEY'),'fake-local-key')
+  (self.root/'.env').write_text('TYPESAFE_API_KEY="fake-local-key"\n')
+  with patch.dict(os.environ,{'TYPESAFE_API_KEY':''}):self.assertEqual(e.typesafe_key(),'fake-local-key')
   self.assertEqual(e.input_id(),fingerprint)
- def test_subscription_token_is_passed_without_api_key_or_log_leak(self):
+ def test_subscription_mount_does_not_pass_api_keys_or_archive_credentials(self):
   run=e.prepare('T1','A',True)
-  e.save(self.root/'.local/secrets.json',{'CLAUDE_CODE_OAUTH_TOKEN':'fake-subscription-token'})
   def fake_run(args,**kwargs):
-   self.assertIn('CLAUDE_CODE_OAUTH_TOKEN',args)
+   self.assertIn(f'{e.AUTH_VOLUME}:/auth:ro',args)
+   self.assertIn('--tmpfs',args)
+   self.assertIn(f'{run/"claude"}:/native',args)
    self.assertNotIn('ANTHROPIC_API_KEY',args)
-   self.assertNotIn('ANTHROPIC_API_KEY',kwargs['env'])
-   self.assertEqual(kwargs['env']['CLAUDE_CODE_OAUTH_TOKEN'],'fake-subscription-token')
+   self.assertNotIn('TYPESAFE_API_KEY',args)
+   self.assertNotIn('CLAUDE_CODE_OAUTH_TOKEN',args)
    for event in [{'type':'assistant','message':{'model':e.CFG['model'],'content':[]}},{'type':'result','is_error':False,'total_cost_usd':0.123,'usage':{'input_tokens':20}}]:kwargs['stdout'].write(json.dumps(event)+'\n')
    return subprocess.CompletedProcess(args,0)
   with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'must-not-be-used','CLAUDE_CODE_OAUTH_TOKEN':''}),patch.object(e,'call',return_value='image-id'),patch.object(e.subprocess,'run',side_effect=fake_run):e.launch(run)
   m=e.read(run/'manifest.json');self.assertTrue(m['session_ok']);self.assertIsNone(m['telemetry']['cost_usd']);self.assertEqual(m['telemetry']['api_equivalent_cost_usd'],0.123)
-  self.assertNotIn('fake-subscription-token',(run/'command.json').read_text())
-  self.assertNotIn('fake-subscription-token',(run/'manifest.json').read_text())
- def test_secret_writer_preserves_other_key_and_restricts_permissions(self):
-  spec=importlib.util.spec_from_file_location('configure',ROOT/'scripts/configure.py');c=importlib.util.module_from_spec(spec);spec.loader.exec_module(c)
-  with patch.object(c,'ROOT',self.root):
-   c.store_secret('TYPESAFE_API_KEY','fake-typesafe');c.store_secret('CLAUDE_CODE_OAUTH_TOKEN','fake-oauth')
-  path=self.root/'.local/secrets.json';self.assertEqual(path.stat().st_mode&0o777,0o600)
-  self.assertEqual(e.read(path),{'TYPESAFE_API_KEY':'fake-typesafe','CLAUDE_CODE_OAUTH_TOKEN':'fake-oauth'})
+ def test_finish_captures_changes_committed_by_agent(self):
+  run=e.prepare('T1','A',True)
+  work=run/'workspace'
+  (work/'solution.mjs').write_text('// agent implementation\n')
+  (work/'CONTRACT.md').write_text('changed outside allowed files\n')
+  e.call(['git','-C',work,'add','.'])
+  e.call(['git','-C',work,'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','agent changes'])
+  manifest=e.read(run/'manifest.json')
+  manifest.update(status='captured',image_id='test-image')
+  e.save(run/'manifest.json',manifest)
+  original_run=subprocess.run
+  def fake_run(args,**kwargs):
+   if args[0]=='docker':return subprocess.CompletedProcess(args,0,'TAP version 13\n# tests 6\n# pass 6\n','')
+   return original_run(args,**kwargs)
+  with patch.object(e.subprocess,'run',side_effect=fake_run):e.finish(run)
+  self.assertIn('+// agent implementation',(run/'changes.patch').read_text())
+  self.assertIn('CONTRACT.md',e.read(run/'manifest.json')['project_violations'])
+ def test_pilot_cannot_use_preflight_from_a_different_image(self):
+  e.save(self.root/'config/runtime-verification.json',{'image_id':'image-one'})
+  with patch.object(e,'call',return_value='image-two'):
+   with self.assertRaisesRegex(ValueError,'Run preflight'):e.verified_image()
 if __name__=='__main__':unittest.main()

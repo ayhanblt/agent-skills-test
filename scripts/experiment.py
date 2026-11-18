@@ -13,19 +13,30 @@ def save(p,x):
     p.parent.mkdir(parents=True,exist_ok=True)
     tmp=p.with_suffix(p.suffix+'.tmp');tmp.write_text(json.dumps(x,indent=2,ensure_ascii=False),encoding='utf-8');tmp.replace(p)
 def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
-def get_secret(name):
-    value=os.environ.get(name)
-    if value:return value
-    path=ROOT/'.local/secrets.json'
-    return read(path).get(name) if path.exists() else None
+AUTH_VOLUME = 'agent-skills-test-claude-auth'
+CLAUDE_CONFIG = '/session'
 
-def subscription_env():
-    token=get_secret('CLAUDE_CODE_OAUTH_TOKEN')
-    if not token:raise ValueError('Run claude setup-token, then python3 scripts/configure.py --claude')
-    env=os.environ.copy()
-    for name in ['ANTHROPIC_API_KEY','ANTHROPIC_AUTH_TOKEN']:env.pop(name,None)
-    env['CLAUDE_CODE_OAUTH_TOKEN']=token
-    return env
+def typesafe_key():
+    if os.environ.get('TYPESAFE_API_KEY'):
+        return os.environ['TYPESAFE_API_KEY']
+    env = ROOT / '.env'
+    if env.is_file():
+        for line in env.read_text(encoding='utf-8').splitlines():
+            name, sep, value = line.partition('=')
+            if sep and name.strip() == 'TYPESAFE_API_KEY':
+                value = value.strip()
+                if len(value) >= 2 and value[0] in ("'", '"') and value.endswith(value[0]):
+                    value = value[1:-1]
+                if value:
+                    return value
+    raise ValueError('Set TYPESAFE_API_KEY in .env (see .env.example)')
+
+def claude_login():
+    # Seed ownership for the non-root Claude user in a fresh Docker volume.
+    call(['docker','run','--rm','--user','0','-v',f'{AUTH_VOLUME}:/auth',IMAGE,
+          'sh','-ec','chown 1000:1000 /auth; chmod 700 /auth'])
+    subprocess.run(['docker','run','--rm','-it','-e','CLAUDE_CONFIG_DIR=/auth',
+                    '-v',f'{AUTH_VOLUME}:/auth',IMAGE,'claude','auth','login','--claudeai'],check=True)
 
 def call(args,**kw): return subprocess.run([str(a) for a in args],check=True,text=True,capture_output=True,**kw).stdout.strip()
 def files():
@@ -77,17 +88,20 @@ def launch(base):
     if m['starter_hashes']!={p.name:sha(base/'workspace'/p.name) for p in (ROOT/f'tasks/{m["task"]}/starter').iterdir()}:raise ValueError('Starter changed before launch')
     if sha(base/'prompt.txt')!=m['prompt_sha256']:raise ValueError('Prompt changed before launch')
     if m['launch_hashes']!={p.name:sha(p) for p in (base/'launch').iterdir()}:raise ValueError('Launch configuration changed')
-    auth_env=subscription_env()
     image_id=call(['docker','image','inspect',IMAGE,'--format','{{.Id}}'])
     name='ast-'+uuid.uuid4().hex
-    args=['docker','run','--name',name,'--rm','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit','256','--memory','2g','--cpus','2','-e','CLAUDE_CODE_OAUTH_TOKEN','-e','CLAUDE_CONFIG_DIR=/session','-v',f'{base/"workspace"}:/workspace','-v',f'{base/"launch"}:/launch:ro','-v',f'{base/"capture"}:/capture','-v',f'{base/"claude"}:/session',image_id,'sh','-c','ln -s /opt/deps/node_modules /workspace/node_modules; exec "$@"','sh','claude','-p','--model',CFG['model'],'--effort',CFG['effort'],'--max-turns',str(CFG['max_turns']),'--output-format','stream-json','--verbose','--include-partial-messages','--setting-sources','project','--settings','/launch/settings.json','--strict-mcp-config','--mcp-config','/launch/mcp.json','--permission-mode','bypassPermissions']
+    args=['docker','run','--name',name,'--rm','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit','256','--memory','2g','--cpus','2','-e',f'CLAUDE_CONFIG_DIR={CLAUDE_CONFIG}','--tmpfs','/session:uid=1000,gid=1000,mode=0700','-v',f'{AUTH_VOLUME}:/auth:ro','-v',f'{base/"workspace"}:/workspace','-v',f'{base/"launch"}:/launch:ro','-v',f'{base/"capture"}:/capture','-v',f'{base/"claude"}:/native',image_id,'sh','-ec',
+          'umask 077; if ! test -s /auth/.credentials.json; then echo "Run python3 scripts/experiment.py login" >&2; exit 3; fi; '
+          'cp /auth/.credentials.json /session/.credentials.json; '
+          'if test -f /auth/.claude.json; then cp /auth/.claude.json /session/.claude.json; fi; '
+          'ln -s /native /session/projects; ln -s /opt/deps/node_modules /workspace/node_modules; exec "$@"','sh','claude','-p','--model',CFG['model'],'--effort',CFG['effort'],'--max-turns',str(CFG['max_turns']),'--output-format','stream-json','--verbose','--include-partial-messages','--setting-sources','project','--settings','/launch/settings.json','--strict-mcp-config','--mcp-config','/launch/mcp.json','--permission-mode','bypassPermissions']
     if m['condition']=='C': args+=['--append-system-prompt-file','/launch/forced.md']
     args += [(base/'prompt.txt').read_text()]
     save(base/'command.json',args);m.update(status='running',started_utc=now(),image_id=image_id,harness_version=CFG['harness_version']);save(base/'manifest.json',m)
     start=time.monotonic();rc=None
     try:
         with (base/'session.jsonl').open('w',encoding='utf-8') as out,(base/'stderr.txt').open('w',encoding='utf-8') as err:
-            rc=subprocess.run(args,stdout=out,stderr=err,timeout=CFG['timeout_seconds'],env=auth_env).returncode
+            rc=subprocess.run(args,stdout=out,stderr=err,timeout=CFG['timeout_seconds']).returncode
     except subprocess.TimeoutExpired:
         subprocess.run(['docker','kill',name],capture_output=True);m['failure_reason']='timeout'
     except BaseException:
@@ -138,9 +152,9 @@ def finish(base):
     work=base/'workspace'
     # Include untracked source/tests in patch, but keep installed treatment metadata separate.
     call(['git','-C',work,'add','-N','.'])
-    patch=call(['git','-C',work,'diff','--binary','HEAD','--','.',':(exclude).claude'])
-    (base/'changes.patch').write_text(patch,encoding='utf-8')
-    tracked=call(['git','-C',work,'diff','--name-only','HEAD']).splitlines()
+    patch = subprocess.check_output(['git','-C',str(work),'diff','--binary',m['baseline_commit'],'--','.',':(exclude).claude'])
+    (base/'changes.patch').write_bytes(patch)
+    tracked=call(['git','-C',work,'diff','--name-only',m['baseline_commit']]).splitlines()
     installed=[p for p in (work/'.claude').rglob('*') if p.is_file()] if (work/'.claude').exists() else []
     violations=[p for p in tracked if p!='solution.mjs' and not (p.endswith('.test.mjs') and '/' not in p) and not p.startswith('.claude/')]
     expected={str(p.relative_to(ROOT/'skills')):sha(p) for p in (ROOT/'skills').rglob('*') if p.is_file()} if m['condition']!='A' else {}
@@ -186,16 +200,18 @@ def freeze():
     pilot=read(ROOT/'pilot/verification.json')
     if not pilot.get('verified'):raise ValueError('Pilot not verified')
     if pilot['files']!=fingerprint():raise ValueError('Inputs changed after pilot verification; recalibrate and verify again')
-    if not (ROOT/'config/runtime-verification.json').exists():raise ValueError('Missing runtime model verification')
-    save(ROOT/'matrix.json',matrix());save(ROOT/'freeze.json',{'utc':now(),'files':fingerprint(),'matrix_sha256':sha(ROOT/'matrix.json'),'pilot_verification_sha256':sha(ROOT/'pilot/verification.json'),'image_id':call(['docker','image','inspect',IMAGE,'--format','{{.Id}}'])})
+    if pilot['image_id'] != verified_image():raise ValueError('Docker image changed since pilot verification')
+    save(ROOT/'matrix.json',matrix());save(ROOT/'freeze.json',{'utc':now(),'files':fingerprint(),'matrix_sha256':sha(ROOT/'matrix.json'),'pilot_verification_sha256':sha(ROOT/'pilot/verification.json'),'image_id':pilot['image_id']})
 
 def pilot_verify(note):
     if (ROOT/'freeze.json').exists():raise ValueError('Already frozen')
     runs=[(p,read(p)) for p in (ROOT/'pilot').glob('*/manifest.json')]
     required={(t,c) for t in ['T2','T4','T6'] for c in 'ABC'}
-    covered={(m['task'],m['condition']) for _,m in runs if m['status']=='evaluated' and m.get('session_ok') and m['functional_success'] is not None and m.get('input_id')==input_id() and (m['condition']!='C' or m['c_injection_verified'])}
+    image_id = verified_image()
+    current_inputs = input_id()
+    covered={(m['task'],m['condition']) for _,m in runs if m['status']=='evaluated' and m.get('session_ok') and m['functional_success'] is not None and m.get('image_id')==image_id and m.get('input_id')==current_inputs and (m['condition']!='C' or m['c_injection_verified'])}
     if not required<=covered:raise ValueError(f'Missing valid pilot cells: {required-covered}')
-    save(ROOT/'pilot/verification.json',{'verified':True,'utc':now(),'note':note,'evidence':{str(p.relative_to(ROOT)):sha(p) for p,_ in runs},'files':fingerprint()})
+    save(ROOT/'pilot/verification.json',{'verified':True,'utc':now(),'note':note,'image_id':image_id,'evidence':{str(p.relative_to(ROOT)):sha(p) for p,_ in runs},'files':fingerprint()})
 
 def blind():
     check_frozen()
@@ -226,8 +242,7 @@ def jev(dry=False):
             body={'model':CFG['judge_model'],'state':(ROOT/f'scoring/{code}.txt').read_text(),'questions':questions(passno==2)}
             save(stem.with_suffix('.request.json'),body)
             if dry:continue
-            token=get_secret('TYPESAFE_API_KEY')
-            if not token:raise ValueError('Run python3 scripts/configure.py --typesafe')
+            token=typesafe_key()
             req=Request(CFG['judge_endpoint'],data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
             with urlopen(req,timeout=120) as r:
                 raw=r.read();result=json.loads(raw)
@@ -279,19 +294,35 @@ def report():
             costs=[r['telemetry'].get('cost_usd') for r in rs if r.get('telemetry') and r['telemetry'].get('cost_usd') is not None]
             durations=[r['telemetry'].get('wall_seconds') for r in rs if r.get('telemetry') and r['telemetry'].get('wall_seconds') is not None]
             successes=sum(r['functional_success'] is True for r in rs)
-            aggregate.append({'task':task,'condition':condition,'known_cost_runs':len(costs),'total_cost_usd':sum(costs) if costs else None,'known_wall_runs':len(durations),'total_wall_seconds':sum(durations) if durations else None,'successes':successes,'cost_per_success_usd':sum(costs)/successes if successes and len(costs)==2 else None})
+            api_costs = [r['telemetry']['api_equivalent_cost_usd'] for r in rs if r['telemetry'] and r['telemetry'].get('api_equivalent_cost_usd') is not None]
+            valid = [r for r in rs if r['session_ok'] and r['functional_success'] is not None]
+            aggregate.append({'known_api_equivalent_cost_runs':len(api_costs),'total_api_equivalent_cost_usd':sum(api_costs) if api_costs else None,'verified_runs':len(valid),'verified_successes':sum(r['functional_success'] is True for r in valid),'task':task,'condition':condition,'known_cost_runs':len(costs),'total_cost_usd':sum(costs) if costs else None,'known_wall_runs':len(durations),'total_wall_seconds':sum(durations) if durations else None,'successes':successes,'cost_per_success_usd':sum(costs)/successes if successes and len(costs)==2 else None})
     save(ROOT/'reports/aggregates.json',aggregate)
     lines=['# Descriptive results','No inference of general superiority from two repetitions. Missing values stay null.','']
     for t in TASKS:
         for c in 'ABC':
             rs=[r for r in rows if r['task']==t and r['condition']==c];known=[r for r in rs if r['functional_success'] is not None];passed=sum(r['functional_success'] is True for r in known)
-            lines.append(f'- {t}/{c}: {passed}/{len(known)} known; {2-len(known)} missing; loads '+str([r['skill_loaded'] for r in rs]))
+            lines.append(f'- {t}/{c}: {passed}/{len(known)} known; {2-len(known)} missing; loads '+str([r['target_skill_loaded'] for r in rs])+f'; verified sessions: {sum(r["session_ok"] is True for r in rs)}/2')
     lines+=['','Subscription billing is unknown (cost_usd=null). Provider-reported total_cost_usd is stored separately as an API-equivalent estimate, never as an actual charge. See results.json for raw telemetry and judge disagreements.','Pilot evidence is excluded. Report invalid sessions, infrastructure failures and treatment contamination separately. H3 association does not prove the skill caused a violation.']
     (ROOT/'reports/REPORT.md').write_text('\n'.join(lines),encoding='utf-8')
 
+def verified_image():
+    path = ROOT/'config/runtime-verification.json'
+    image_id = call(['docker','image','inspect',IMAGE,'--format','{{.Id}}'])
+    if not path.is_file() or read(path).get('image_id') != image_id:
+        raise ValueError('Run preflight for the current Docker image')
+    return image_id
+
+def verify_claude_login():
+    result = subprocess.run(['docker','run','--rm','-e','CLAUDE_CONFIG_DIR=/auth',
+                             '-v',f'{AUTH_VOLUME}:/auth:ro',IMAGE,
+                             'claude','auth','status'],capture_output=True,text=True)
+    if result.returncode or json.loads(result.stdout).get('authMethod') != 'claude.ai':
+        raise ValueError('Sign in with your Claude subscription: python3 scripts/experiment.py login')
+
 def preflight():
-    subscription_env()
-    if not get_secret('TYPESAFE_API_KEY'):raise ValueError('Run python3 scripts/configure.py --typesafe before preflight')
+    key = typesafe_key()
+    verify_claude_login()
     version=call(['docker','run','--rm',IMAGE,'claude','--version'])
     if not version.startswith(CFG['harness_version']+' '):raise ValueError('Unexpected Claude Code version')
     # A separate subscription-usage probe; never one of the 36 or the calibration tasks.
@@ -302,19 +333,20 @@ def preflight():
     probe_dir=ROOT/'pilot'/('jev-probe-'+uuid.uuid4().hex[:8]);probe_dir.mkdir()
     body={'model':CFG['judge_model'],'state':'The value is 2.','questions':{'probe':{'type':'choice','instructions':'Which value is stated?','criteria':{'two':'Value 2','three':'Value 3'}}}}
     save(probe_dir/'request.json',body)
-    req=Request(CFG['judge_endpoint'],data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+get_secret('TYPESAFE_API_KEY'),'Content-Type':'application/json'})
+    req=Request(CFG['judge_endpoint'],data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'})
     with urlopen(req,timeout=60) as r:raw=r.read()
     (probe_dir/'response.json').write_bytes(raw);judge=json.loads(raw)
     if judge.get('model')!=CFG['judge_model'] or 'probe' not in judge.get('answers',{}):raise ValueError('Jev model/schema not verified; no fallback allowed')
-    save(ROOT/'config/runtime-verification.json',{'utc':now(),'judge_model':judge['model'],'judge_probe':str(probe_dir.relative_to(ROOT)),'model':m['actual_models'],'harness':version,'probe':str(base.relative_to(ROOT)),'probe_manifest_sha256':sha(base/'manifest.json')})
+    save(ROOT/'config/runtime-verification.json',{'utc':now(),'image_id':m['image_id'],'judge_model':judge['model'],'judge_probe':str(probe_dir.relative_to(ROOT)),'model':m['actual_models'],'harness':version,'probe':str(base.relative_to(ROOT)),'probe_manifest_sha256':sha(base/'manifest.json')})
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['build','preflight','pilot','pilot-verify','freeze','prepare','start','capture','finish','blind','jev','score','report']);p.add_argument('--task',choices=list(TASKS));p.add_argument('--condition',choices=list('ABC'));p.add_argument('--id');p.add_argument('--run-dir');p.add_argument('--note');p.add_argument('--dry-run',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['build','login','preflight','pilot','pilot-verify','freeze','prepare','start','capture','finish','blind','jev','score','report']);p.add_argument('--task',choices=list(TASKS));p.add_argument('--condition',choices=list('ABC'));p.add_argument('--id');p.add_argument('--run-dir');p.add_argument('--note');p.add_argument('--dry-run',action='store_true');a=p.parse_args()
     if a.action=='build':print(call(['docker','build','-t',IMAGE,ROOT]));return
+    if a.action=='login':claude_login();return
     if a.action=='preflight':preflight();return
     if a.action=='pilot':
         if (ROOT/'freeze.json').exists():raise ValueError('Pilot is closed after freeze')
-        if not (ROOT/'config/runtime-verification.json').exists():raise ValueError('Run preflight first')
+        verified_image()
         base=prepare(a.task,a.condition,True);print(base);launch(base);finish(base);return
     if a.action=='pilot-verify':
         if not a.note:raise ValueError('Record calibration findings, ceiling/floor assessment, and amendment rationale in --note')

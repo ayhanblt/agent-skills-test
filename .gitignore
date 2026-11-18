@@ -13,5 +13,6 @@ node_modules/
 # Local API secrets must never enter the research repository.
 .env
 .env.*
+!.env.example
 
 .DS_Store
