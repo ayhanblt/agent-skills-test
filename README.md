@@ -1,7 +1,7 @@
 # Agent Skills gerçekten yardımcı mı?
 ## 36 çalıştırmada skill seçimi, çalışan kod, proje kuralları ve maliyet
 
-**Durum:** proje kiti hazır; ücretli model probe'u, pilot ve 36 ana koşu henüz çalıştırılmadı. Çalışma yolu: `/Users/ayhanblt/Desktop/projects/agent-skills-test`. Eski `subagent-context-test` yolu/repo'su salt okunur kaynak; değiştirilmedi. provenance/ içindeki orijinaller çalıştırılmaz; scripts/ aynı capture/hash/kör iki geçiş yaklaşımının yeni görevler için uyarlanmış girişleridir.
+**Durum:** proje kiti hazır; model erişim kontrolü, pilot ve 36 ana koşu henüz çalıştırılmadı. Çalışma yolu: `/Users/ayhanblt/Desktop/projects/agent-skills-test`. Eski `subagent-context-test` yolu/repo'su salt okunur kaynak; değiştirilmedi. provenance/ içindeki orijinaller çalıştırılmaz; scripts/ aynı capture/hash/kör iki geçiş yaklaşımının yeni görevler için uyarlanmış girişleridir.
 
 ### Dosya ağacı
 ```text
@@ -37,12 +37,19 @@ npm ci --ignore-scripts
 npm test
 python3 scripts/experiment.py build
 python3 scripts/selfcheck.py --docker
-# ANTHROPIC_API_KEY ve TYPESAFE_API_KEY ortamda tanımlı olmalı.
+# Bir kez abonelik token'ını oluşturun ve yerel olarak kaydedin:
+claude setup-token
+python3 scripts/configure.py --claude
+python3 scripts/configure.py --typesafe
 python3 scripts/experiment.py preflight
 python3 scripts/experiment.py pilot --task T2 --condition A
 ```
 
-Preflight ayrı küçük ücretli Claude ve Jev çağrılarıyla `claude-sonnet-5-5` ve pinned Jev erişimini doğrular. Belgede model bulunması hesap erişimi kanıtı değildir. Model yoksa durur, başka modele geçmez. Bu sürüm container yalıtımı için Anthropic API anahtarı kullanır; masaüstü Claude aboneliği kimlik bilgilerini kopyalamaz. Anahtarları Git'e veya sohbete yazmayın. API kullanım bedeli doğar.
+Claude Code **kendi Claude aboneliğinizi** kullanır. `claude setup-token` tarayıcıda abonelik hesabınızla yetkilendirme açar; terminalde üretilen token'ı `configure.py --claude` istemine yapıştırın. TypeSafe anahtarını `configure.py --typesafe` istemine yapıştırın. Girişler ekranda görünmez. Değerler yalnızca `.local/secrets.json` içinde, kullanıcıya özel dosya izniyle tutulur; Git'e, raporlara veya container komut kaydına yazılmaz. Bu dosyayı sohbete göndermeyin.
+
+Araştırma script'i anahtarları bu yerel dosyadan otomatik okur. Claude container'ına yalnızca abonelik token'ı verilir; TypeSafe anahtarı verilmez. ANTHROPIC_API_KEY kullanılmaz. Her koşunun ayarları ve oturumu yine sıfırdan oluşturulur; ortak kişisel Claude klasörü bağlanmaz.
+
+Preflight `claude-sonnet-5-5` ve pinned Jev erişimini gerçek çağrıyla doğrular; model yoksa durur, başka modele geçmez. Claude çağrıları abonelik limitlerini, Jev çağrıları TypeSafe bakiyesini kullanır. Claude'un raporladığı USD değeri varsa API eşdeğeri tahmin olarak ayrı tutulur; gerçek koşu başına abonelik maliyeti bilinmediği için `cost_usd=null` kalır. [Resmî abonelik token yöntemi](https://code.claude.com/docs/en/authentication#generate-a-long-lived-token).
 
 ### Pilot → ana koşular
 T2, T4, T6'nın her biri için A, B, C pilotlarını birer kez çalıştırın (toplam 9); her komut benzersiz kayıt oluşturur. Hiçbir pilot ana hücreye taşınmaz. Kalibrasyon notundan sonra:
@@ -71,7 +78,7 @@ python3 scripts/experiment.py report
 Jev iki geçişi de otomatik yapar; ikinci geçişte dosya ve seçenek sırası ters çevrilir. Var olan ham cevapları yeniden satın almaz. Seçim uyuşmazlıkları/düşük olasılıklar insan formunda görünür, Jev seçimi bu formda gösterilmez. Score tamamlanmamış kararları null bırakır. Eşleme anahtarını kararlar sabitlenene kadar açmayın. Model/prosedür etkisi için nedensel iddia yalnız puandan çıkarılmaz; PROTOCOL.md sınırları geçerlidir.
 
 ### Doğrulama ve sınırlar
-Yerel selfcheck altı referans çözümü kabul eder, altı eksik starter'ı reddeder. İlaveten makul ama hatalı çözüm mutasyonları ve çalışma hattı kontrolleri bulunur. Bunlar Sonnet'in başarısını veya pilot kalibrasyonunu ölçmez. Güncel container doğrulama durumu reports/VALIDATION.json içindedir. API erişimi ve ücretli pilotlar ayrıca doğrulanır; ana koşular pilot doğrulanmadan açılamaz. C, aynı kullanıcı promptuyla sistem bağlamına birebir skill içeriği ekler; native Skill çağrısından farklı mekanizma olduğu raporda açıkça yazılır.
+Yerel selfcheck altı referans çözümü kabul eder, altı eksik starter'ı reddeder. İlaveten makul ama hatalı çözüm mutasyonları ve çalışma hattı kontrolleri bulunur. Bunlar Sonnet'in başarısını veya pilot kalibrasyonunu ölçmez. Güncel container doğrulama durumu reports/VALIDATION.json içindedir. Abonelik/model erişimi ve pilotlar ayrıca doğrulanır; ana koşular pilot doğrulanmadan açılamaz. C, aynı kullanıcı promptuyla sistem bağlamına birebir skill içeriği ekler; native Skill çağrısından farklı mekanizma olduğu raporda açıkça yazılır.
 
 ### Kaynaklar
 - Önceki yöntem ve salt okunur kaynak: https://github.com/ayhanblt/subagent-context-test (commit defb2fb42c5133b835ba51d310a91026dfbda5ee).

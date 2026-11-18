@@ -13,6 +13,20 @@ def save(p,x):
     p.parent.mkdir(parents=True,exist_ok=True)
     tmp=p.with_suffix(p.suffix+'.tmp');tmp.write_text(json.dumps(x,indent=2,ensure_ascii=False),encoding='utf-8');tmp.replace(p)
 def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+def get_secret(name):
+    value=os.environ.get(name)
+    if value:return value
+    path=ROOT/'.local/secrets.json'
+    return read(path).get(name) if path.exists() else None
+
+def subscription_env():
+    token=get_secret('CLAUDE_CODE_OAUTH_TOKEN')
+    if not token:raise ValueError('Run claude setup-token, then python3 scripts/configure.py --claude')
+    env=os.environ.copy()
+    for name in ['ANTHROPIC_API_KEY','ANTHROPIC_AUTH_TOKEN']:env.pop(name,None)
+    env['CLAUDE_CODE_OAUTH_TOKEN']=token
+    return env
+
 def call(args,**kw): return subprocess.run([str(a) for a in args],check=True,text=True,capture_output=True,**kw).stdout.strip()
 def files():
     for base in ['tasks','skills','private-tests','scripts','config','selfcheck','provenance']:
@@ -51,7 +65,7 @@ def prepare(task,condition,pilot=False,run_id=None):
         settings['hooks'][event]=[{'matcher':'Skill','hooks':[{'type':'command','command':'python3 /launch/hook.py'}]}]
     save(config/'settings.json',settings);save(config/'mcp.json',{'mcpServers':{}})
     prompt=(ROOT/f'tasks/{task}/prompt.txt').read_text();(base/'prompt.txt').write_text(prompt)
-    m={'id':base.name,'task':task,'condition':condition,'pilot':pilot,'input_id':input_id(),'created_utc':now(),'status':'prepared','requested_model':CFG['model'],'actual_models':None,'effort_requested':CFG['effort'],'effort_observed':None,'baseline_commit':baseline,'starter_hashes':{p.name:sha(p) for p in (ROOT/f'tasks/{task}/starter').iterdir()},'prompt_sha256':sha(base/'prompt.txt'),'skill':skill,'c_loading_mechanism':'append-system-prompt-file: exact SKILL.md bytes' if condition=='C' else None,'injected_skill_sha256':sha(config/'forced.md') if condition=='C' else None,'skill_events':None,'telemetry':{'tokens':None,'cost_usd':None,'duration_ms':None,'wall_seconds':None},'functional_success':None,'project_violations':None,'jev':None}
+    m={'id':base.name,'task':task,'condition':condition,'pilot':pilot,'input_id':input_id(),'created_utc':now(),'status':'prepared','auth_mode':'claude-subscription-oauth','requested_model':CFG['model'],'actual_models':None,'effort_requested':CFG['effort'],'effort_observed':None,'baseline_commit':baseline,'starter_hashes':{p.name:sha(p) for p in (ROOT/f'tasks/{task}/starter').iterdir()},'prompt_sha256':sha(base/'prompt.txt'),'skill':skill,'c_loading_mechanism':'append-system-prompt-file: exact SKILL.md bytes' if condition=='C' else None,'injected_skill_sha256':sha(config/'forced.md') if condition=='C' else None,'skill_events':None,'telemetry':{'tokens':None,'cost_usd':None,'api_equivalent_cost_usd':None,'duration_ms':None,'wall_seconds':None},'functional_success':None,'project_violations':None,'jev':None}
     m['rep']=next((r['rep'] for r in matrix() if r['id']==run_id),None) if not pilot else None
     m['launch_hashes']={p.name:sha(p) for p in config.iterdir()}
     save(base/'manifest.json',m);return base
@@ -63,17 +77,17 @@ def launch(base):
     if m['starter_hashes']!={p.name:sha(base/'workspace'/p.name) for p in (ROOT/f'tasks/{m["task"]}/starter').iterdir()}:raise ValueError('Starter changed before launch')
     if sha(base/'prompt.txt')!=m['prompt_sha256']:raise ValueError('Prompt changed before launch')
     if m['launch_hashes']!={p.name:sha(p) for p in (base/'launch').iterdir()}:raise ValueError('Launch configuration changed')
-    if not os.environ.get('ANTHROPIC_API_KEY'): raise ValueError('Set ANTHROPIC_API_KEY; isolated API billing is required by this implementation')
+    auth_env=subscription_env()
     image_id=call(['docker','image','inspect',IMAGE,'--format','{{.Id}}'])
     name='ast-'+uuid.uuid4().hex
-    args=['docker','run','--name',name,'--rm','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit','256','--memory','2g','--cpus','2','-e','ANTHROPIC_API_KEY','-e','CLAUDE_CONFIG_DIR=/session','-v',f'{base/"workspace"}:/workspace','-v',f'{base/"launch"}:/launch:ro','-v',f'{base/"capture"}:/capture','-v',f'{base/"claude"}:/session',image_id,'sh','-c','ln -s /opt/deps/node_modules /workspace/node_modules; exec "$@"','sh','claude','-p','--model',CFG['model'],'--effort',CFG['effort'],'--max-turns',str(CFG['max_turns']),'--output-format','stream-json','--verbose','--include-partial-messages','--setting-sources','project','--settings','/launch/settings.json','--strict-mcp-config','--mcp-config','/launch/mcp.json','--permission-mode','bypassPermissions']
+    args=['docker','run','--name',name,'--rm','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit','256','--memory','2g','--cpus','2','-e','CLAUDE_CODE_OAUTH_TOKEN','-e','CLAUDE_CONFIG_DIR=/session','-v',f'{base/"workspace"}:/workspace','-v',f'{base/"launch"}:/launch:ro','-v',f'{base/"capture"}:/capture','-v',f'{base/"claude"}:/session',image_id,'sh','-c','ln -s /opt/deps/node_modules /workspace/node_modules; exec "$@"','sh','claude','-p','--model',CFG['model'],'--effort',CFG['effort'],'--max-turns',str(CFG['max_turns']),'--output-format','stream-json','--verbose','--include-partial-messages','--setting-sources','project','--settings','/launch/settings.json','--strict-mcp-config','--mcp-config','/launch/mcp.json','--permission-mode','bypassPermissions']
     if m['condition']=='C': args+=['--append-system-prompt-file','/launch/forced.md']
     args += [(base/'prompt.txt').read_text()]
     save(base/'command.json',args);m.update(status='running',started_utc=now(),image_id=image_id,harness_version=CFG['harness_version']);save(base/'manifest.json',m)
     start=time.monotonic();rc=None
     try:
         with (base/'session.jsonl').open('w',encoding='utf-8') as out,(base/'stderr.txt').open('w',encoding='utf-8') as err:
-            rc=subprocess.run(args,stdout=out,stderr=err,timeout=CFG['timeout_seconds']).returncode
+            rc=subprocess.run(args,stdout=out,stderr=err,timeout=CFG['timeout_seconds'],env=auth_env).returncode
     except subprocess.TimeoutExpired:
         subprocess.run(['docker','kill',name],capture_output=True);m['failure_reason']='timeout'
     except BaseException:
@@ -105,7 +119,7 @@ def capture(base):
         for line in hook.read_text().splitlines(): events.append(json.loads(line))
     m['actual_models']=sorted(models) or None;m['skill_events']=events;m['malformed_stream_lines']=malformed
     if result:
-        m['telemetry'].update(tokens=result.get('usage'),cost_usd=result.get('total_cost_usd'),duration_ms=result.get('duration_ms'))
+        m['telemetry'].update(tokens=result.get('usage'),cost_usd=None,api_equivalent_cost_usd=result.get('total_cost_usd'),duration_ms=result.get('duration_ms'))
     m['session_ok']=bool(result and not result.get('is_error') and m.get('exit_code')==0 and models=={CFG['model']})
     m['c_injection_verified']=bool(m['condition']=='C' and m['session_ok'] and sha(base/'launch/forced.md')==m['injected_skill_sha256']) if m['condition']=='C' else None
     m['skill_tool_successes']=[e for e in events if e.get('hook_event_name')=='PostToolUse' and (e.get('tool_input',{}).get('skill','').split() or [''])[0].split(':')[-1] in [x['skill'] for x in TASKS.values()]]
@@ -212,8 +226,8 @@ def jev(dry=False):
             body={'model':CFG['judge_model'],'state':(ROOT/f'scoring/{code}.txt').read_text(),'questions':questions(passno==2)}
             save(stem.with_suffix('.request.json'),body)
             if dry:continue
-            token=os.environ.get('TYPESAFE_API_KEY')
-            if not token:raise ValueError('Set TYPESAFE_API_KEY')
+            token=get_secret('TYPESAFE_API_KEY')
+            if not token:raise ValueError('Run python3 scripts/configure.py --typesafe')
             req=Request(CFG['judge_endpoint'],data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
             with urlopen(req,timeout=120) as r:
                 raw=r.read();result=json.loads(raw)
@@ -272,14 +286,15 @@ def report():
         for c in 'ABC':
             rs=[r for r in rows if r['task']==t and r['condition']==c];known=[r for r in rs if r['functional_success'] is not None];passed=sum(r['functional_success'] is True for r in known)
             lines.append(f'- {t}/{c}: {passed}/{len(known)} known; {2-len(known)} missing; loads '+str([r['skill_loaded'] for r in rs]))
-    lines+=['','Token and API cost are provider-reported, not subscription charges. See results.json for raw telemetry and judge disagreements.','Pilot evidence is excluded. Report invalid sessions, infrastructure failures and treatment contamination separately. H3 association does not prove the skill caused a violation.']
+    lines+=['','Subscription billing is unknown (cost_usd=null). Provider-reported total_cost_usd is stored separately as an API-equivalent estimate, never as an actual charge. See results.json for raw telemetry and judge disagreements.','Pilot evidence is excluded. Report invalid sessions, infrastructure failures and treatment contamination separately. H3 association does not prove the skill caused a violation.']
     (ROOT/'reports/REPORT.md').write_text('\n'.join(lines),encoding='utf-8')
 
 def preflight():
-    if not os.environ.get('ANTHROPIC_API_KEY') or not os.environ.get('TYPESAFE_API_KEY'):raise ValueError('Set ANTHROPIC_API_KEY and TYPESAFE_API_KEY before preflight')
+    subscription_env()
+    if not get_secret('TYPESAFE_API_KEY'):raise ValueError('Run python3 scripts/configure.py --typesafe before preflight')
     version=call(['docker','run','--rm',IMAGE,'claude','--version'])
     if not version.startswith(CFG['harness_version']+' '):raise ValueError('Unexpected Claude Code version')
-    # A separate paid probe; never one of the 36 or the calibration tasks.
+    # A separate subscription-usage probe; never one of the 36 or the calibration tasks.
     base=prepare('T1','A',True,'model-probe-'+uuid.uuid4().hex[:8]);(base/'prompt.txt').write_text('Reply only READY. Do not use tools.')
     probe=read(base/'manifest.json');probe['prompt_sha256']=sha(base/'prompt.txt');save(base/'manifest.json',probe)
     launch(base);m=read(base/'manifest.json')
@@ -287,7 +302,7 @@ def preflight():
     probe_dir=ROOT/'pilot'/('jev-probe-'+uuid.uuid4().hex[:8]);probe_dir.mkdir()
     body={'model':CFG['judge_model'],'state':'The value is 2.','questions':{'probe':{'type':'choice','instructions':'Which value is stated?','criteria':{'two':'Value 2','three':'Value 3'}}}}
     save(probe_dir/'request.json',body)
-    req=Request(CFG['judge_endpoint'],data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+os.environ['TYPESAFE_API_KEY'],'Content-Type':'application/json'})
+    req=Request(CFG['judge_endpoint'],data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+get_secret('TYPESAFE_API_KEY'),'Content-Type':'application/json'})
     with urlopen(req,timeout=60) as r:raw=r.read()
     (probe_dir/'response.json').write_bytes(raw);judge=json.loads(raw)
     if judge.get('model')!=CFG['judge_model'] or 'probe' not in judge.get('answers',{}):raise ValueError('Jev model/schema not verified; no fallback allowed')

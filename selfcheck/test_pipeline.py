@@ -1,4 +1,4 @@
-import importlib.util,json,tempfile,unittest,shutil
+import importlib.util,json,tempfile,unittest,shutil,os,subprocess
 from pathlib import Path
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
@@ -43,4 +43,29 @@ class Pipeline(unittest.TestCase):
    with self.assertRaises(ValueError):e.check_frozen()
  def test_jev_option_order_reversed(self):
   for k,v in e.questions().items():self.assertEqual(list(v['criteria']),list(reversed(list(e.questions(True)[k]['criteria']))))
+ def test_secrets_are_local_and_do_not_change_research_fingerprint(self):
+  fingerprint=e.input_id()
+  e.save(self.root/'.local/secrets.json',{'TYPESAFE_API_KEY':'fake-local-key'})
+  with patch.dict(os.environ,{'TYPESAFE_API_KEY':''}):self.assertEqual(e.get_secret('TYPESAFE_API_KEY'),'fake-local-key')
+  self.assertEqual(e.input_id(),fingerprint)
+ def test_subscription_token_is_passed_without_api_key_or_log_leak(self):
+  run=e.prepare('T1','A',True)
+  e.save(self.root/'.local/secrets.json',{'CLAUDE_CODE_OAUTH_TOKEN':'fake-subscription-token'})
+  def fake_run(args,**kwargs):
+   self.assertIn('CLAUDE_CODE_OAUTH_TOKEN',args)
+   self.assertNotIn('ANTHROPIC_API_KEY',args)
+   self.assertNotIn('ANTHROPIC_API_KEY',kwargs['env'])
+   self.assertEqual(kwargs['env']['CLAUDE_CODE_OAUTH_TOKEN'],'fake-subscription-token')
+   for event in [{'type':'assistant','message':{'model':e.CFG['model'],'content':[]}},{'type':'result','is_error':False,'total_cost_usd':0.123,'usage':{'input_tokens':20}}]:kwargs['stdout'].write(json.dumps(event)+'\n')
+   return subprocess.CompletedProcess(args,0)
+  with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'must-not-be-used','CLAUDE_CODE_OAUTH_TOKEN':''}),patch.object(e,'call',return_value='image-id'),patch.object(e.subprocess,'run',side_effect=fake_run):e.launch(run)
+  m=e.read(run/'manifest.json');self.assertTrue(m['session_ok']);self.assertIsNone(m['telemetry']['cost_usd']);self.assertEqual(m['telemetry']['api_equivalent_cost_usd'],0.123)
+  self.assertNotIn('fake-subscription-token',(run/'command.json').read_text())
+  self.assertNotIn('fake-subscription-token',(run/'manifest.json').read_text())
+ def test_secret_writer_preserves_other_key_and_restricts_permissions(self):
+  spec=importlib.util.spec_from_file_location('configure',ROOT/'scripts/configure.py');c=importlib.util.module_from_spec(spec);spec.loader.exec_module(c)
+  with patch.object(c,'ROOT',self.root):
+   c.store_secret('TYPESAFE_API_KEY','fake-typesafe');c.store_secret('CLAUDE_CODE_OAUTH_TOKEN','fake-oauth')
+  path=self.root/'.local/secrets.json';self.assertEqual(path.stat().st_mode&0o777,0o600)
+  self.assertEqual(e.read(path),{'TYPESAFE_API_KEY':'fake-typesafe','CLAUDE_CODE_OAUTH_TOKEN':'fake-oauth'})
 if __name__=='__main__':unittest.main()
