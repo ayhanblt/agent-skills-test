@@ -1,0 +1,5 @@
+record,source,geo,year,operation,scope,unit,value
+dk1,synthetic-municipal-extract,DK,2018,COL,public-collection-contracts,TONNE,1930000
+dk2,synthetic-municipal-extract,DK,2024,COL,public-collection-contracts,TONNE,1810000
+se1,synthetic-municipal-extract,SE,2018,COL,public-collection-contracts,TONNE,1300000
+se2,synthetic-municipal-extract,SE,2024,COL,public-collection-contracts,TONNE,1460000

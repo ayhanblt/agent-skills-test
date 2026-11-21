@@ -1,0 +1,3 @@
+Prepare a short municipal-waste strategy note comparing Denmark, Ireland, Luxembourg and Sweden in 2018 and 2024. Use the archived official Eurostat data and metadata in inputs. Report municipal waste generated per person, its arithmetic change in kg per person, and any documented comparability limitations for each country. Make each figure and warning traceable to the source table, dimensions and official methodology. Keep arithmetic distinct from claims about a comparable trend.
+
+Write evidence.json as a JSON object with dataset, operation, unit, sources and countries. Each key in countries is a two-letter country code with kg_2018, kg_2024, delta_kg, break_years (array of integer years inside this period), and interpretation. Also write note.md for the reader.

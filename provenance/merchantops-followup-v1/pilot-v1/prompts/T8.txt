@@ -1,0 +1,7 @@
+# T8-v2 · Belediye atığı kıyası için karar notu
+
+Girdilerdeki arşivlenmiş resmi tabloları ve yöntem notlarını kullanarak belediyenin talep ettiği kıyasları incele. Her kıyas için kullanılacak seri ve gözlemleri, birim ve kapsamı, hesaplanabilen farkı ve bu farkın nasıl yorumlanabileceğini yaz. İki kaynağın aynı olguyu ölçtüğünü varsayma. Varsa karşılaştırılabilir bir alternatif dönem veya ölçü öner ve mevcut verinin karşılayamadığı iddiayı belirt.
+
+`evidence.json` içinde vaka girdisindeki her kıyasın kimliğini, seçilen tablo/filtreleri, iki gözlemi ve birimi, farkı veya hesaplanamama gerekçesini, kararını ve kararın kaynak bölümünü yaz. `note.md` içinde karar vericiye hangi kıyasları kullanabileceğini ve hangileri için ek kanıt gerektiğini açıkla.
+
+Kıyas kimliklerini ve iş emirlerini `inputs/kiyaslar.md` dosyasından al. `evidence.json` kökünde `comparisons` nesnesi kullan. Her kimliğin altında `table`, `operation`, `unit`, `scope`, `start`, `end`, `delta`, `decision`, `source` ve `reason` alanları olsun. Hesaplanamayan sayıları null yaz. Karar kodları `comparable`, `qualified` (aritmetik var, kıyas ihtiyat gerektiriyor) ve `blocked` (istenen fark hesaplanamaz).

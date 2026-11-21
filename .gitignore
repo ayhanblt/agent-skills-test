@@ -1,11 +1,7 @@
-runs/*
-!runs/.gitkeep
-scoring/*
-!scoring/.gitkeep
-reports/*
-!reports/.gitkeep
-pilot/*
-!pilot/.gitkeep
+/runs/
+/scoring/
+/reports/
+/pilot/
 .local/
 __pycache__/
 node_modules/
@@ -16,3 +12,8 @@ node_modules/
 !.env.example
 
 .DS_Store
+/config/runtime-verification.json
+
+# Generated local checks and ad hoc downloads remain with research evidence.
+/provenance/merchantops-v2-extension/verification/
+/downloads/

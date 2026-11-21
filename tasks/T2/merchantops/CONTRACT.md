@@ -1,0 +1,2 @@
+# T2 — Financial reconciliation
+Implement the financial events and immutable journal defined in docs/ledger-v1.md using the supplied payment and provider fixtures. No other task's solution is present or needed. Reconcile out-of-order events, exact partial refunds, reversals and uncertain capture. Ensure atomic rollback even after the debit is written. Preserve normal payment, refund, dispute and document behavior.

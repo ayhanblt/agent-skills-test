@@ -7,7 +7,7 @@ const api=await import(pathToFileURL(process.env.SOLUTION));
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 function transport(){const calls=[];const fetcher=(key,{signal})=>{const d=deferred();calls.push({...d,key,signal});return d.promise;};return {calls,fetcher};}
-function harness(t){const cache=api.createCache?.(t.fetcher);let values={};function Probe({id,k}){values[id]=cache?api.useResource(cache,k):api.useSearch(k,t.fetcher);return null;}let root;return {values,get root(){return root;},async show(items,strict=false){await act(async()=>{const kids=items.map(([id,k])=>React.createElement(Probe,{id,k,key:id}));const el=strict?React.createElement(React.StrictMode,null,...kids):React.createElement(React.Fragment,null,...kids);if(root)root.update(el);else root=create(el);});},async close(){await act(async()=>root.unmount());}};}
+function harness(t){const cache=api.createCache?.(t.fetcher);let values={};function Probe({id,k}){values[id]=cache?api.useResource(cache,k):api.useSearch(k,t.fetcher);return null;}let root;return {values,cache,get root(){return root;},async show(items,strict=false){await act(async()=>{const kids=items.map(([id,k])=>React.createElement(Probe,{id,k,key:id}));const el=strict?React.createElement(React.StrictMode,null,...kids):React.createElement(React.Fragment,null,...kids);if(root)root.update(el);else root=create(el);});},async close(){await act(async()=>root.unmount());}};}
 const settle=async(c,method,v)=>act(async()=>{c[method](v);await Promise.resolve();});
 test('normal empty, loading, success and error',async()=>{const t=transport(),h=harness(t);await h.show([['a','']]);assert.equal(t.calls.length,0);assert.equal(h.values.a.status,'idle');await h.show([['a','one']]);assert.equal(h.values.a.status,'loading');assert.equal(h.values.a.data,null);await settle(t.calls.at(-1),'resolve',['one']);assert.equal(h.values.a.status,'success');assert.deepEqual(h.values.a.data,['one']);await h.show([['a','two']]);assert.equal(h.values.a.data,null);const err=Error('offline');await settle(t.calls.at(-1),'reject',err);assert.equal(h.values.a.status,'error');assert.equal(h.values.a.error,err);await h.close();});
 test('critical: reverse completion and stale rejection',async()=>{const t=transport(),h=harness(t);await h.show([['a','old']]);const old=t.calls.at(-1);await h.show([['a','new']]);const fresh=t.calls.at(-1);await settle(fresh,'resolve','fresh');await settle(old,'reject',Error('old'));assert.equal(h.values.a.status,'success');assert.equal(h.values.a.data,'fresh');await h.close();});
@@ -19,4 +19,42 @@ if(process.env.TASK==='T4'){
  test('critical: retry generation ignores old success and old finally',async()=>{const t=transport(),h=harness(t);await h.show([['a','k'],['b','k']]);const old=t.calls[0];await act(async()=>h.values.a.retry());assert.equal(t.calls.length,2);assert.equal(old.signal.aborted,true);await settle(old,'resolve','old');assert.equal(h.values.a.status,'loading');assert.equal(h.values.b.status,'loading');await settle(t.calls[1],'resolve','new');assert.equal(h.values.a.data,'new');assert.equal(h.values.b.data,'new');await h.close();});
  test('critical: abandoned request does not poison remount',async()=>{const t=transport(),h=harness(t);await h.show([['a','k']]);const old=t.calls[0];await h.show([]);assert.equal(old.signal.aborted,true);await h.show([['a','k']]);assert.equal(t.calls.length,2);await settle(old,'reject',Error('late'));assert.equal(h.values.a.status,'loading');await settle(t.calls[1],'resolve','ok');assert.equal(h.values.a.data,'ok');await h.close();});
  test('different keys independent, error retry updates all subscribers',async()=>{const t=transport(),h=harness(t);await h.show([['a','x'],['b','y']]);assert.equal(t.calls.length,2);await settle(t.calls.find(x=>x.key==='x'),'reject',Error('x'));await settle(t.calls.find(x=>x.key==='y'),'resolve','y');assert.equal(h.values.b.data,'y');await act(async()=>h.values.a.retry());await settle(t.calls.at(-1),'resolve','x');assert.equal(h.values.a.data,'x');assert.equal(h.values.b.data,'y');await h.close();});
+}
+
+if(process.env.TASK==='T4'){
+ test('critical: a mutation supersedes a shared refresh without discarding stale data',async()=>{
+  const t=transport(),h=harness(t);
+  await h.show([['a','k'],['b','k'],['other','other']]);
+  const original=t.calls.find(r=>r.key==='k'),other=t.calls.find(r=>r.key==='other');
+  await settle(original,'resolve','cached');
+  await act(async()=>{h.values.a.retry();});
+  const old=t.calls.at(-1);
+  await act(async()=>{h.cache.invalidate('k');});
+  const fresh=t.calls.at(-1);
+  assert.notEqual(fresh,old);assert.equal(old.signal.aborted,true);assert.equal(other.signal.aborted,false);
+  await settle(old,'resolve','obsolete');
+  for(const id of ['a','b']){assert.equal(h.values[id].status,'loading');assert.equal(h.values[id].data,'cached');}
+  const failed=Error('refresh failed');await settle(fresh,'reject',failed);
+  assert.equal(h.values.a.data,'cached');assert.equal(h.values.b.status,'error');assert.equal(h.values.b.error,failed);
+  await act(async()=>{h.values.b.retry();});
+  assert.equal(h.values.a.error,null);
+  await settle(t.calls.at(-1),'resolve','replacement');
+  assert.equal(h.values.a.data,'replacement');assert.equal(h.values.b.data,'replacement');
+  await h.close();
+ });
+ test('critical: offline invalidation and abandoned refresh preserve data through remount',async()=>{
+  const t=transport(),h=harness(t);
+  await h.show([['a','k']]);await settle(t.calls[0],'resolve','cached');
+  await h.show([]);
+  await act(async()=>{h.cache.invalidate('k');});
+  assert.equal(t.calls.length,1);
+  await h.show([['b','k']]);const old=t.calls[1];
+  assert.equal(h.values.b.data,'cached');assert.equal(h.values.b.status,'loading');
+  await h.show([]);assert.equal(old.signal.aborted,true);
+  await h.show([['c','k']]);assert.equal(t.calls.length,3);
+  await settle(t.calls[2],'resolve','fresh');
+  await settle(old,'reject',Error('late'));
+  assert.equal(h.values.c.data,'fresh');assert.equal(h.values.c.error,null);
+  await h.close();
+ });
 }

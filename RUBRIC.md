@@ -5,11 +5,11 @@ Kabul kriterleri tasks/T*/starter/CONTRACT.md içinde çözümden önce sabittir
 | Görev | Normal | Kritik gizli ölçümler |
 |---|---|---|
 | T1 | Geçerli ödeme ve tekrar sonucu | 12 eşzamanlı kopya, anahtar çatışması, bağımsız anahtar, reddedilmiş işlemi retry |
-| T2 | Pending/terminal durum, lookup | Timeout sonrası yeniden servis oluşturma, coalesced retry, sırasız webhook, terminal regresyonu, webhook/charge yarışı, savunmacı snapshot |
+| T2 | Pending/terminal durum, lookup | Timeout sonrası yeniden servis oluşturma, coalesced retry, sırasız webhook, terminal regresyonu, webhook/charge yarışı, servisler arası tek charge/lookup, terminal webhook sonrası lookup hatası ve receipt koruma, savunmacı snapshot |
 | T3 | Idle/loading/success/error | Abort'u yok sayan transport, ters tamamlanma, eski rejection, search kimliği değişimi, StrictMode/unmount |
-| T4 | Paylaşılan cache | Tek abonenin ayrılması, son abone iptali/remount, ortak retry generation, eski success/finally, bağımsız anahtarlar |
+| T4 | Paylaşılan cache | Tek abonenin ayrılması, son abone iptali/remount, ortak retry generation, eski success/finally, ortak cache invalidation, stale data ile hata/yeniden bağlanma, bağımsız anahtarlar |
 | T5 | Parçalı aktarım/resume/final hash | Offset/hash bozukluğu, gap/overlap, replay, failed commit, eksik/bozuk final, sıfır uzunluk |
-| T6 | T5 + crash sınırı | Disk commit sonrası child process exit=73, yeni instance replay, ek commit olmaması, canlı durable offset ve değişmiş diskin yeniden hash kontrolü |
+| T6 | Aktarım + crash sınırı | Disk commit sonrası child process exit=73, yeni instance replay, ek commit olmaması, canlı durable offset ve değişmiş diskin yeniden hash kontrolü, eşleşen kısmi replay ve callback içinden ilerleyen durable offset |
 
 Proje kuralları: yalnız solution.mjs ve isteğe bağlı yerel *.test.mjs; yeni bağımlılık/dış servis/ağ yok, payload loglama yok, mevcut store/adapter ve imzalar korunur. Dosya kısıtları otomatik diff ile; kaynak içindeki anlamsal kısıtlar Jev ile değerlendirilir. Test sonuçları Jev'e verilmez.
 

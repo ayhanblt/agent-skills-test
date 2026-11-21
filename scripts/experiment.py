@@ -1,5 +1,5 @@
 """Isolated Claude Code experiment. Standard-library orchestration only."""
-import argparse, hashlib, json, os, random, re, shutil, subprocess, sys, time, uuid
+import argparse, ast, hashlib, json, os, random, re, shutil, ssl, subprocess, sys, time, uuid
 from pathlib import Path
 from datetime import datetime, timezone
 from urllib.request import Request, urlopen
@@ -7,6 +7,8 @@ ROOT=Path(__file__).resolve().parents[1]
 CFG=json.loads((ROOT/'config/experiment.json').read_text())
 TASKS=json.loads((ROOT/'config/tasks.json').read_text())
 IMAGE='agent-skills-test:locked'
+MODELS = CFG['models']
+PILOT_TASKS = ('T2', 'T4', 'T6')
 def now(): return datetime.now(timezone.utc).isoformat()
 def read(p): return json.loads(p.read_text(encoding='utf-8'))
 def save(p,x):
@@ -31,6 +33,15 @@ def typesafe_key():
                     return value
     raise ValueError('Set TYPESAFE_API_KEY in .env (see .env.example)')
 
+def open_typesafe(request, *, timeout):
+    # The python.org macOS installer can leave OpenSSL without a CA bundle.
+    if sys.platform == 'darwin' and not ssl.get_default_verify_paths().cafile and not os.environ.get('SSL_CERT_FILE'):
+        bundle = Path('/etc/ssl/cert.pem')
+        if bundle.is_file():
+            return urlopen(request, timeout=timeout, context=ssl.create_default_context(cafile=str(bundle)))
+    return urlopen(request, timeout=timeout)
+
+
 def claude_login():
     # Seed ownership for the non-root Claude user in a fresh Docker volume.
     call(['docker','run','--rm','--user','0','-v',f'{AUTH_VOLUME}:/auth',IMAGE,
@@ -42,7 +53,7 @@ def call(args,**kw): return subprocess.run([str(a) for a in args],check=True,tex
 def files():
     for base in ['tasks','skills','private-tests','scripts','config','selfcheck','provenance']:
         for p in sorted((ROOT/base).rglob('*')):
-            if p.is_file() and '__pycache__' not in p.parts: yield p
+            if p.is_file() and '__pycache__' not in p.parts and p != ROOT/'config/runtime-verification.json': yield p
     for f in ['README.md','PROTOCOL.md','RUBRIC.md','Dockerfile','.dockerignore','package.json','package-lock.json']: yield ROOT/f
 def fingerprint(): return {str(p.relative_to(ROOT)).replace('\\','/'):sha(p) for p in files()}
 def input_id():return hashlib.sha256(json.dumps(fingerprint(),sort_keys=True).encode()).hexdigest()
@@ -55,8 +66,8 @@ def check_frozen():
     if sha(ROOT/'pilot/verification.json')!=f['pilot_verification_sha256']: raise ValueError('Pilot verification altered')
     return f
 
-def prepare(task,condition,pilot=False,run_id=None):
-    if task not in TASKS or condition not in 'ABC': raise ValueError('Invalid task/condition')
+def prepare(task,condition,pilot=False,run_id=None,model=MODELS['sonnet']):
+    if task not in TASKS or condition not in ('A','B','C') or model not in MODELS.values(): raise ValueError('Invalid task/condition')
     if not pilot: check_frozen()
     base=ROOT/('pilot' if pilot else 'runs')/(run_id or str(uuid.uuid4()))
     if base.exists(): raise ValueError('Run exists; evidence cannot be overwritten')
@@ -71,12 +82,12 @@ def prepare(task,condition,pilot=False,run_id=None):
     if condition!='A': shutil.copytree(ROOT/'skills',work/'.claude/skills')
     if condition=='C': shutil.copyfile(ROOT/f'skills/{skill}/SKILL.md',config/'forced.md')
     shutil.copyfile(ROOT/'scripts/hook.py',config/'hook.py')
-    settings={'model':CFG['model'],'effortLevel':CFG['effort'],'permissions':{'deny':['Agent','Task','WebSearch','WebFetch']},'hooks':{}}
+    settings={'model':model,'effortLevel':CFG['effort'],'permissions':{'deny':['Agent','Task','WebSearch','WebFetch']},'hooks':{}}
     for event in ['PreToolUse','PostToolUse','PostToolUseFailure']:
         settings['hooks'][event]=[{'matcher':'Skill','hooks':[{'type':'command','command':'python3 /launch/hook.py'}]}]
     save(config/'settings.json',settings);save(config/'mcp.json',{'mcpServers':{}})
     prompt=(ROOT/f'tasks/{task}/prompt.txt').read_text();(base/'prompt.txt').write_text(prompt)
-    m={'id':base.name,'task':task,'condition':condition,'pilot':pilot,'input_id':input_id(),'created_utc':now(),'status':'prepared','auth_mode':'claude-subscription-oauth','requested_model':CFG['model'],'actual_models':None,'effort_requested':CFG['effort'],'effort_observed':None,'baseline_commit':baseline,'starter_hashes':{p.name:sha(p) for p in (ROOT/f'tasks/{task}/starter').iterdir()},'prompt_sha256':sha(base/'prompt.txt'),'skill':skill,'c_loading_mechanism':'append-system-prompt-file: exact SKILL.md bytes' if condition=='C' else None,'injected_skill_sha256':sha(config/'forced.md') if condition=='C' else None,'skill_events':None,'telemetry':{'tokens':None,'cost_usd':None,'api_equivalent_cost_usd':None,'duration_ms':None,'wall_seconds':None},'functional_success':None,'project_violations':None,'jev':None}
+    m={'id':base.name,'task':task,'condition':condition,'pilot':pilot,'input_id':input_id(),'created_utc':now(),'status':'prepared','auth_mode':'claude-subscription-oauth','requested_model':model,'actual_models':None,'effort_requested':CFG['effort'],'effort_observed':None,'baseline_commit':baseline,'starter_hashes':{p.name:sha(p) for p in (ROOT/f'tasks/{task}/starter').iterdir()},'prompt_sha256':sha(base/'prompt.txt'),'skill':skill,'c_loading_mechanism':'append-system-prompt-file: exact SKILL.md bytes' if condition=='C' else None,'injected_skill_sha256':sha(config/'forced.md') if condition=='C' else None,'skill_events':None,'telemetry':{'tokens':None,'cost_usd':None,'api_equivalent_cost_usd':None,'duration_ms':None,'wall_seconds':None},'functional_success':None,'project_violations':None,'jev':None}
     m['rep']=next((r['rep'] for r in matrix() if r['id']==run_id),None) if not pilot else None
     m['launch_hashes']={p.name:sha(p) for p in config.iterdir()}
     save(base/'manifest.json',m);return base
@@ -94,7 +105,7 @@ def launch(base):
           'umask 077; if ! test -s /auth/.credentials.json; then echo "Run python3 scripts/experiment.py login" >&2; exit 3; fi; '
           'cp /auth/.credentials.json /session/.credentials.json; '
           'if test -f /auth/.claude.json; then cp /auth/.claude.json /session/.claude.json; fi; '
-          'ln -s /native /session/projects; ln -s /opt/deps/node_modules /workspace/node_modules; exec "$@"','sh','claude','-p','--model',CFG['model'],'--effort',CFG['effort'],'--max-turns',str(CFG['max_turns']),'--output-format','stream-json','--verbose','--include-partial-messages','--setting-sources','project','--settings','/launch/settings.json','--strict-mcp-config','--mcp-config','/launch/mcp.json','--permission-mode','bypassPermissions']
+          'ln -s /native /session/projects; ln -s /opt/deps/node_modules /workspace/node_modules; exec "$@"','sh','claude','-p','--model',m['requested_model'],'--effort',CFG['effort'],'--max-turns',str(CFG['max_turns']),'--output-format','stream-json','--verbose','--include-partial-messages','--setting-sources','project','--settings','/launch/settings.json','--strict-mcp-config','--mcp-config','/launch/mcp.json','--permission-mode','bypassPermissions']
     if m['condition']=='C': args+=['--append-system-prompt-file','/launch/forced.md']
     args += [(base/'prompt.txt').read_text()]
     save(base/'command.json',args);m.update(status='running',started_utc=now(),image_id=image_id,harness_version=CFG['harness_version']);save(base/'manifest.json',m)
@@ -115,7 +126,8 @@ def capture(base):
     for line in (base/'session.jsonl').read_text(encoding='utf-8').splitlines():
         try: o=json.loads(line)
         except ValueError: malformed+=1;continue
-        msg=o.get('message',{})
+        candidate=o.get('message')
+        msg=candidate if isinstance(candidate,dict) else {}
         if o.get('type')=='assistant' and msg.get('model'): models.add(msg['model'])
         if o.get('type')=='result':result=o
         parts=msg.get('content',[])
@@ -134,7 +146,7 @@ def capture(base):
     m['actual_models']=sorted(models) or None;m['skill_events']=events;m['malformed_stream_lines']=malformed
     if result:
         m['telemetry'].update(tokens=result.get('usage'),cost_usd=None,api_equivalent_cost_usd=result.get('total_cost_usd'),duration_ms=result.get('duration_ms'))
-    m['session_ok']=bool(result and not result.get('is_error') and m.get('exit_code')==0 and models=={CFG['model']})
+    m['session_ok']=bool(result and not result.get('is_error') and (m.get('exit_code')==0 or m.get('terminal_result_before_cleanup')) and models=={m['requested_model']})
     m['c_injection_verified']=bool(m['condition']=='C' and m['session_ok'] and sha(base/'launch/forced.md')==m['injected_skill_sha256']) if m['condition']=='C' else None
     m['skill_tool_successes']=[e for e in events if e.get('hook_event_name')=='PostToolUse' and (e.get('tool_input',{}).get('skill','').split() or [''])[0].split(':')[-1] in [x['skill'] for x in TASKS.values()]]
     m['direct_skill_content_reads']=content_reads
@@ -185,13 +197,15 @@ def finish(base):
     (base/'hidden-tests.tap').write_text(output,encoding='utf-8')
     # Assertion failures => false. Infrastructure failures => null, not a failed implementation.
     infra=rc not in (0,1,124) or (rc in (1,124) and 'TAP version' not in output)
-    expected_count={'T1':6,'T2':11,'T3':5,'T4':8,'T5':5,'T6':9}[task]
+    expected_count={'T1':6,'T2':13,'T3':5,'T4':10,'T5':5,'T6':11}[task]
     all_tests_reported=bool(re.search(rf'^# tests {expected_count}$',output,re.M) and re.search(rf'^# pass {expected_count}$',output,re.M))
     m.update(functional_success=None if infra else rc==0 and all_tests_reported,project_violations=violations,status='evaluated',evaluation={'exit_code':rc,'infra_error':infra,'seconds':time.monotonic()-start,'suite_sha256':sha(ROOT/f'private-tests/{suite}.mjs'),'expected_tests':expected_count,'all_tests_reported_passed':all_tests_reported})
     save(base/'manifest.json',m);save(base/'functional-manifest.json',m);capture_hashes={str(p.relative_to(base)):sha(p) for p in base.rglob('*') if p.is_file() and '.git' not in p.parts and p.name not in ['evidence-index.json','manifest.json']};save(base/'evidence-index.json',capture_hashes)
 
 def matrix():
-    rows=[{'task':t,'condition':c,'rep':r} for t in TASKS for c in 'ABC' for r in (1,2)]
+    rows=[{'model':model,'task':task,'condition':condition,'rep':rep}
+          for model in MODELS.values() for task in TASKS
+          for condition in CFG['conditions'] for rep in range(1,CFG['repetitions']+1)]
     random.Random(CFG['seed']).shuffle(rows)
     return [dict(id=f'{i:02}',**row) for i,row in enumerate(rows,1)]
 
@@ -201,24 +215,77 @@ def freeze():
     if not pilot.get('verified'):raise ValueError('Pilot not verified')
     if pilot['files']!=fingerprint():raise ValueError('Inputs changed after pilot verification; recalibrate and verify again')
     if pilot['image_id'] != verified_image():raise ValueError('Docker image changed since pilot verification')
+    if any(not (ROOT/path).is_file() or sha(ROOT/path)!=digest for path,digest in pilot['evidence'].items()):
+        raise ValueError('Pilot records changed since verification')
     save(ROOT/'matrix.json',matrix());save(ROOT/'freeze.json',{'utc':now(),'files':fingerprint(),'matrix_sha256':sha(ROOT/'matrix.json'),'pilot_verification_sha256':sha(ROOT/'pilot/verification.json'),'image_id':pilot['image_id']})
+
+def sonnet_pipeline_id():
+    source = ast.parse((ROOT/'scripts/experiment.py').read_text())
+    core = {'prepare','launch','capture','finish'}
+    return hashlib.sha256(''.join(ast.dump(node) for node in source.body
+                                 if isinstance(node,ast.FunctionDef) and node.name in core).encode()).hexdigest()
+
+def valid_pilots(image_id):
+    current_inputs = input_id()
+    policy_path = ROOT/'config/sonnet-pilot-carryover.json'
+    carryover = {}
+    if policy_path.is_file():
+        policy = read(policy_path)
+        prior = policy['previous_config']
+        current = {k: v for k,v in CFG.items() if k not in ('title','models')}
+        if (current == {k:v for k,v in prior.items() if k != 'model'}
+                and prior['model'] == MODELS['sonnet'] and policy.get('pipeline_id')==sonnet_pipeline_id()):
+            if all((ROOT/name).is_file() and sha(ROOT/name)==digest for name,digest in policy['protected_files'].items()):
+                carryover = policy['manifests']
+    clarification_path = ROOT/'pilot/deep-pilot-carryover.json'
+    if clarification_path.is_file():
+        clarification = read(clarification_path)
+        if clarification['pipeline_id']==sonnet_pipeline_id() and all(
+            (ROOT/name).is_file() and sha(ROOT/name)==digest for name,digest in clarification['protected_files'].items()
+        ):
+            carryover.update(clarification['manifests'])
+    valid = {}
+    for path in sorted((ROOT/'pilot').glob('*/manifest.json')):
+        row = read(path)
+        model = row.get('requested_model')
+        relative = path.relative_to(ROOT).as_posix()
+        if not (row['status']=='evaluated' and row.get('session_ok') and row.get('actual_models')==[model]
+                and row.get('functional_success') is not None and row.get('image_id')==image_id
+                and (row['condition']!='C' or row.get('c_injection_verified'))):
+            continue
+        digest = sha(path)
+        if row.get('input_id')==current_inputs or carryover.get(relative)==digest:
+            valid[(model,row['task'],row['condition'])] = (relative,digest)
+    return valid
 
 def pilot_verify(note):
     if (ROOT/'freeze.json').exists():raise ValueError('Already frozen')
-    runs=[(p,read(p)) for p in (ROOT/'pilot').glob('*/manifest.json')]
-    required={(t,c) for t in ['T2','T4','T6'] for c in 'ABC'}
+    required={(model,t,c) for model in MODELS.values() for t in PILOT_TASKS for c in CFG['conditions']}
     image_id = verified_image()
-    current_inputs = input_id()
-    covered={(m['task'],m['condition']) for _,m in runs if m['status']=='evaluated' and m.get('session_ok') and m['functional_success'] is not None and m.get('image_id')==image_id and m.get('input_id')==current_inputs and (m['condition']!='C' or m['c_injection_verified'])}
-    if not required<=covered:raise ValueError(f'Missing valid pilot cells: {required-covered}')
-    save(ROOT/'pilot/verification.json',{'verified':True,'utc':now(),'note':note,'image_id':image_id,'evidence':{str(p.relative_to(ROOT)):sha(p) for p,_ in runs},'files':fingerprint()})
+    valid = valid_pilots(image_id)
+    if not required<=valid.keys():raise ValueError(f'Missing valid pilot cells: {sorted(required-valid.keys())}')
+    save(ROOT/'pilot/verification.json',{'verified':True,'utc':now(),'note':note,'image_id':image_id,
+         'evidence':dict(valid[cell] for cell in sorted(required)),'files':fingerprint()})
+
+def run_pilot(task,condition,model):
+    base = prepare(task,condition,True,model=model)
+    print(base,flush=True)
+    launch(base)
+    finish(base)
+    return read(base/'manifest.json')
 
 def blind():
     check_frozen()
     out=ROOT/'scoring';key=out/'key.json'
     if key.exists():raise ValueError('Blind set already created')
     ms=[(p.parent,read(p)) for p in (ROOT/'runs').glob('*/manifest.json')]
-    if len(ms)!=36 or any(m['status']!='evaluated' for _,m in ms):raise ValueError('Finish all 36 runs, including failures, before blinding')
+    expected = {r['id']:r for r in read(ROOT/'matrix.json')}
+    if {p.name for p,_ in ms} != expected.keys():
+        raise ValueError(f'Finish all {len(expected)} runs, including failures, before blinding')
+    for base, record in ms:
+        row = expected[base.name]
+        if record['status']!='evaluated' or record['requested_model']!=row['model'] or any(record[k]!=row[k] for k in ('task','condition','rep')):
+            raise ValueError(f'Run {base.name} does not match the frozen assignment')
     random.SystemRandom().shuffle(ms);mapping={}
     for base,m in ms:
         code=uuid.uuid4().hex[:12];mapping[code]=base.name
@@ -244,7 +311,7 @@ def jev(dry=False):
             if dry:continue
             token=typesafe_key()
             req=Request(CFG['judge_endpoint'],data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
-            with urlopen(req,timeout=120) as r:
+            with open_typesafe(req,timeout=120) as r:
                 raw=r.read();result=json.loads(raw)
             response.write_bytes(raw)
             if result.get('model')!=CFG['judge_model']:raise ValueError('Jev runtime model mismatch; retain raw response and stop')
@@ -281,35 +348,63 @@ def score():
 def report():
     if (ROOT/'freeze.json').exists():check_frozen()
     rows=[]
-    for row in matrix():
+    rows_plan = read(ROOT/'matrix.json') if (ROOT/'freeze.json').exists() else matrix()
+    for row in rows_plan:
         p=ROOT/f'runs/{row["id"]}/manifest.json'
         m=read(p) if p.exists() else {}
-        rows.append(dict(row,status=m.get('status','not-run'),functional_success=m.get('functional_success'),session_ok=m.get('session_ok'),skill_loaded=m.get('skill_loaded_observed'),target_skill_loaded=m.get('target_skill_loaded_observed'),violations=m.get('project_violations'),telemetry=m.get('telemetry'),jev=m.get('jev')))
+        rows.append(dict(row,actual_models=m.get('actual_models'),status=m.get('status','not-run'),functional_success=m.get('functional_success'),session_ok=m.get('session_ok'),skill_loaded=m.get('skill_loaded_observed'),target_skill_loaded=m.get('target_skill_loaded_observed'),violations=m.get('project_violations'),telemetry=m.get('telemetry'),jev=m.get('jev')))
     save(ROOT/'reports/results.json',rows)
     # Keep reported usage separate from missing telemetry; no imputation or invented price calculation.
     aggregate=[]
-    for task in TASKS:
-        for condition in 'ABC':
-            rs=[r for r in rows if r['task']==task and r['condition']==condition]
-            costs=[r['telemetry'].get('cost_usd') for r in rs if r.get('telemetry') and r['telemetry'].get('cost_usd') is not None]
-            durations=[r['telemetry'].get('wall_seconds') for r in rs if r.get('telemetry') and r['telemetry'].get('wall_seconds') is not None]
-            successes=sum(r['functional_success'] is True for r in rs)
-            api_costs = [r['telemetry']['api_equivalent_cost_usd'] for r in rs if r['telemetry'] and r['telemetry'].get('api_equivalent_cost_usd') is not None]
-            valid = [r for r in rs if r['session_ok'] and r['functional_success'] is not None]
-            aggregate.append({'known_api_equivalent_cost_runs':len(api_costs),'total_api_equivalent_cost_usd':sum(api_costs) if api_costs else None,'verified_runs':len(valid),'verified_successes':sum(r['functional_success'] is True for r in valid),'task':task,'condition':condition,'known_cost_runs':len(costs),'total_cost_usd':sum(costs) if costs else None,'known_wall_runs':len(durations),'total_wall_seconds':sum(durations) if durations else None,'successes':successes,'cost_per_success_usd':sum(costs)/successes if successes and len(costs)==2 else None})
+    for model, task, condition in sorted({(r['model'],r['task'],r['condition']) for r in rows}):
+        rs=[r for r in rows if (r['model'],r['task'],r['condition'])==(model,task,condition)]
+        costs=[r['telemetry'].get('cost_usd') for r in rs if r.get('telemetry') and r['telemetry'].get('cost_usd') is not None]
+        durations=[r['telemetry'].get('wall_seconds') for r in rs if r.get('telemetry') and r['telemetry'].get('wall_seconds') is not None]
+        successes=sum(r['functional_success'] is True for r in rs)
+        api_costs = [r['telemetry']['api_equivalent_cost_usd'] for r in rs if r['telemetry'] and r['telemetry'].get('api_equivalent_cost_usd') is not None]
+        valid = [r for r in rs if r['session_ok'] and r['functional_success'] is not None]
+        token_fields = ('input_tokens','cache_creation_input_tokens','cache_read_input_tokens','output_tokens')
+        tokens = [(r['telemetry'] or {}).get('tokens') or {} for r in rs]
+        token_totals = {k:sum(t[k] for t in tokens if isinstance(t.get(k),int))
+                        if any(isinstance(t.get(k),int) for t in tokens) else None for k in token_fields}
+        rules = [(r['jev'] or {}).get('project_rules',{}).get('value') for r in valid]
+        aggregate.append({'model':model,'known_functional_runs':sum(r['functional_success'] is not None for r in rs),
+                          'target_loaded':sum(r['target_skill_loaded'] is True for r in valid),
+                          'known_target_load_runs':sum(r['target_skill_loaded'] is not None for r in valid),
+                          'project_file_violation_runs':sum(bool(r['violations']) for r in valid),
+                          'known_project_file_runs':sum(r['violations'] is not None for r in valid),
+                          'jev_project_rule_violations':rules.count('violated'),'known_jev_project_rule_runs':sum(r in ('compliant','violated') for r in rules),
+                          'token_totals':token_totals,'known_api_equivalent_cost_runs':len(api_costs),'total_api_equivalent_cost_usd':sum(api_costs) if api_costs else None,'verified_runs':len(valid),'verified_successes':sum(r['functional_success'] is True for r in valid),'task':task,'condition':condition,'known_cost_runs':len(costs),'total_cost_usd':sum(costs) if costs else None,'known_wall_runs':len(durations),'total_wall_seconds':sum(durations) if durations else None,'successes':successes,'cost_per_success_usd':sum(costs)/successes if successes and len(costs)==2 else None})
     save(ROOT/'reports/aggregates.json',aggregate)
     lines=['# Descriptive results','No inference of general superiority from two repetitions. Missing values stay null.','']
-    for t in TASKS:
-        for c in 'ABC':
-            rs=[r for r in rows if r['task']==t and r['condition']==c];known=[r for r in rs if r['functional_success'] is not None];passed=sum(r['functional_success'] is True for r in known)
-            lines.append(f'- {t}/{c}: {passed}/{len(known)} known; {2-len(known)} missing; loads '+str([r['target_skill_loaded'] for r in rs])+f'; verified sessions: {sum(r["session_ok"] is True for r in rs)}/2')
+    for model in MODELS.values():
+        lines += ['', f'## {model}', '', '| Task | A | B | C |', '|---|---:|---:|---:|']
+        for task in TASKS:
+            cells = [next(a for a in aggregate if (a['model'],a['task'],a['condition'])==(model,task,c))
+                     for c in CFG['conditions']]
+            values = [f"{a['verified_successes']}/{a['verified_runs']} verified; "
+                      f"{a['target_loaded']}/{a['known_target_load_runs']} loaded" for a in cells]
+            lines.append('| '+task+' | '+' | '.join(values)+' |')
+        for condition in CFG['conditions']:
+            cells = [a for a in aggregate if (a['model'],a['condition'])==(model,condition)]
+            known = sum(a['known_api_equivalent_cost_runs'] for a in cells)
+            estimate = sum(a['total_api_equivalent_cost_usd'] or 0 for a in cells)
+            lines.append(f"- {condition}: {sum(a['verified_successes'] for a in cells)}/"
+                         f"{sum(a['verified_runs'] for a in cells)} verified functional passes, "
+                         f"{sum(a['project_file_violation_runs'] for a in cells)}/"
+                         f"{sum(a['known_project_file_runs'] for a in cells)} file violations, "
+                         f"API-equivalent USD {f'{estimate:.6f}' if known else 'unknown'} ({known} runs with cost).")
+    lines += ['', 'Compare A/B/C within each model first. Compare the size and direction of those differences between models.']
     lines+=['','Subscription billing is unknown (cost_usd=null). Provider-reported total_cost_usd is stored separately as an API-equivalent estimate, never as an actual charge. See results.json for raw telemetry and judge disagreements.','Pilot evidence is excluded. Report invalid sessions, infrastructure failures and treatment contamination separately. H3 association does not prove the skill caused a violation.']
     (ROOT/'reports/REPORT.md').write_text('\n'.join(lines),encoding='utf-8')
 
 def verified_image():
     path = ROOT/'config/runtime-verification.json'
     image_id = call(['docker','image','inspect',IMAGE,'--format','{{.Id}}'])
-    if not path.is_file() or read(path).get('image_id') != image_id:
+    if not path.is_file():
+        raise ValueError('Run preflight for both models')
+    runtime = read(path)
+    if runtime.get('image_id') != image_id or set(runtime.get('models', [])) != set(MODELS.values()):
         raise ValueError('Run preflight for the current Docker image')
     return image_id
 
@@ -325,29 +420,61 @@ def preflight():
     verify_claude_login()
     version=call(['docker','run','--rm',IMAGE,'claude','--version'])
     if not version.startswith(CFG['harness_version']+' '):raise ValueError('Unexpected Claude Code version')
-    # A separate subscription-usage probe; never one of the 36 or the calibration tasks.
-    base=prepare('T1','A',True,'model-probe-'+uuid.uuid4().hex[:8]);(base/'prompt.txt').write_text('Reply only READY. Do not use tools.')
-    probe=read(base/'manifest.json');probe['prompt_sha256']=sha(base/'prompt.txt');save(base/'manifest.json',probe)
-    launch(base);m=read(base/'manifest.json')
-    if not m['session_ok']:raise ValueError('Model unavailable or runtime model mismatch; inspect probe logs. No fallback allowed.')
+    # Model-access probes are outside the pilot and main samples.
+    image_id = call(['docker','image','inspect',IMAGE,'--format','{{.Id}}'])
+    probes = {}
+    for model in MODELS.values():
+        base = prepare('T1','A',True,'model-probe-'+uuid.uuid4().hex[:8],model=model)
+        (base/'prompt.txt').write_text('Reply only READY. Do not use tools.')
+        probe = read(base/'manifest.json')
+        probe['prompt_sha256'] = sha(base/'prompt.txt')
+        save(base/'manifest.json',probe)
+        launch(base)
+        result = read(base/'manifest.json')
+        if not result['session_ok'] or result['image_id'] != image_id:
+            raise ValueError(f'{model} access or model identity verification failed; inspect {base}')
+        probes[model] = {'path':str(base.relative_to(ROOT)),'manifest_sha256':sha(base/'manifest.json')}
+        print(f'Verified {model}',flush=True)
     probe_dir=ROOT/'pilot'/('jev-probe-'+uuid.uuid4().hex[:8]);probe_dir.mkdir()
     body={'model':CFG['judge_model'],'state':'The value is 2.','questions':{'probe':{'type':'choice','instructions':'Which value is stated?','criteria':{'two':'Value 2','three':'Value 3'}}}}
     save(probe_dir/'request.json',body)
     req=Request(CFG['judge_endpoint'],data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'})
-    with urlopen(req,timeout=60) as r:raw=r.read()
+    with open_typesafe(req,timeout=60) as r:raw=r.read()
     (probe_dir/'response.json').write_bytes(raw);judge=json.loads(raw)
     if judge.get('model')!=CFG['judge_model'] or 'probe' not in judge.get('answers',{}):raise ValueError('Jev model/schema not verified; no fallback allowed')
-    save(ROOT/'config/runtime-verification.json',{'utc':now(),'image_id':m['image_id'],'judge_model':judge['model'],'judge_probe':str(probe_dir.relative_to(ROOT)),'model':m['actual_models'],'harness':version,'probe':str(base.relative_to(ROOT)),'probe_manifest_sha256':sha(base/'manifest.json')})
+    save(ROOT/'config/runtime-verification.json',{'utc':now(),'image_id':image_id,
+         'judge_model':judge['model'],'judge_probe':str(probe_dir.relative_to(ROOT)),
+         'models':list(probes),'harness':version,'probes':probes})
+    print(f"Verified {judge['model']}",flush=True)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['build','login','preflight','pilot','pilot-verify','freeze','prepare','start','capture','finish','blind','jev','score','report']);p.add_argument('--task',choices=list(TASKS));p.add_argument('--condition',choices=list('ABC'));p.add_argument('--id');p.add_argument('--run-dir');p.add_argument('--note');p.add_argument('--dry-run',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['build','login','preflight','pilot','pilot-batch','pilot-verify','freeze','prepare','start','capture','finish','blind','jev','score','report']);p.add_argument('--model',choices=list(MODELS));p.add_argument('--task',choices=PILOT_TASKS);p.add_argument('--condition',choices=list('ABC'));p.add_argument('--id');p.add_argument('--run-dir');p.add_argument('--note');p.add_argument('--dry-run',action='store_true');a=p.parse_args()
     if a.action=='build':print(call(['docker','build','-t',IMAGE,ROOT]));return
     if a.action=='login':claude_login();return
     if a.action=='preflight':preflight();return
-    if a.action=='pilot':
+    if a.action in ('pilot','pilot-batch'):
         if (ROOT/'freeze.json').exists():raise ValueError('Pilot is closed after freeze')
-        verified_image()
-        base=prepare(a.task,a.condition,True);print(base);launch(base);finish(base);return
+        image = verified_image()
+        if a.action=='pilot':
+            model = MODELS[a.model or 'sonnet']
+            if not (a.task and a.condition):p.error('pilot requires --task and --condition')
+            run_pilot(a.task,a.condition,model)
+        else:
+            models = [MODELS[a.model]] if a.model else list(MODELS.values())
+            cells = [(model,task,condition) for model in models for task in PILOT_TASKS
+                     for condition in CFG['conditions']]
+            random.Random(CFG['seed']).shuffle(cells)
+            complete = valid_pilots(image)
+            for model,task,condition in cells:
+                if (model,task,condition) in complete:
+                    continue
+                print(f'{model} {task}/{condition}',flush=True)
+                result = run_pilot(task,condition,model)
+                if (model,task,condition) not in valid_pilots(image):
+                    raise ValueError(f'Pilot infrastructure or session failed for {model} {task}/{condition}')
+                print(f"functional_success={result['functional_success']}, "
+                      f"target_skill_loaded={result['target_skill_loaded_observed']}",flush=True)
+        return
     if a.action=='pilot-verify':
         if not a.note:raise ValueError('Record calibration findings, ceiling/floor assessment, and amendment rationale in --note')
         pilot_verify(a.note);return
@@ -356,10 +483,10 @@ def main():
         f=check_frozen()
         if sha(ROOT/'matrix.json')!=f['matrix_sha256']:raise ValueError('Matrix altered')
         rows=read(ROOT/'matrix.json');row=next((r for r in rows if r['id']==a.id),None)
-        if not row:raise ValueError('Use a matrix --id 01..36')
+        if not row:raise ValueError(f'Use a matrix --id 01..{len(rows)}')
         prior=rows[:rows.index(row)]
         if any(not (ROOT/f'runs/{r["id"]}/hidden-tests.tap').exists() for r in prior):raise ValueError('Respect randomized order; finish preceding runs first')
-        print(prepare(row['task'],row['condition'],False,row['id']));return
+        print(prepare(row['task'],row['condition'],False,row['id'],model=row['model']));return
     if a.action in ['start','capture','finish']:
         base=Path(a.run_dir).resolve() if a.run_dir else ROOT/f'runs/{a.id}'
         if ROOT not in base.parents:raise ValueError('Run must be inside project')

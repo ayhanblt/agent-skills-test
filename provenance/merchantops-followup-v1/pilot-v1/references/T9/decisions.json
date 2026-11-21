@@ -1,0 +1,9 @@
+{
+  "handoff": "İptal düğmesi yalnızca talep oluşturur. Fulfillment onayı gelmeden iptal tamamlanmaz. Taşıyıcıya devir önce gerçekleşirse talep reddedilir, müşteri iade sürecine yönelir ve ödeme iadesi başlamaz.",
+  "authorization": "Yalnız oturumu açık sipariş sahibi self-servis iptal isteyebilir. Desteğin mevcut kanalı ve izinleri değişmez.",
+  "eligibility": "Yalnız ödenmiş ve taşıyıcıya devredilmemiş siparişler kapsamdadır. Satır kalemi iptali kapsamda yoktur.",
+  "duplicate": "Aynı siparişe tekrar gelen istek mevcut sonucu döndürür; ikinci iptal isteği veya para iadesi başlatmaz.",
+  "timeout": "Fulfillment zaman aşımında durum beklemede kalır. Destek inceleyebilir. Otomatik iptal veya otomatik para iadesi yapılmaz.",
+  "refund": "Fulfillment onayı gelince yakalanan tam tutar, mevcut asenkron iade akışından orijinal ödeme yöntemine gider.",
+  "visibility": "Sipariş geçmişinde talep alındı, iptal edildi ve iptal edilemedi durumları ile ödeme iadesinin durumu gösterilir. Yeni e-posta kapsam dışı."
+}

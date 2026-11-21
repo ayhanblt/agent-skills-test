@@ -10,8 +10,8 @@ class Pipeline(unittest.TestCase):
   for f in ['README.md','PROTOCOL.md','RUBRIC.md','Dockerfile','.dockerignore','package.json','package-lock.json']:shutil.copy2(ROOT/f,self.root/f)
   self.previous=e.ROOT;e.ROOT=self.root
  def tearDown(self):e.ROOT=self.previous;self.temp.cleanup()
- def test_matrix_has_36_unique_balanced_cells(self):
-  rows=e.matrix();self.assertEqual(36,len(rows));self.assertEqual(36,len({(x['task'],x['condition'],x['rep']) for x in rows}));self.assertEqual(rows,e.matrix())
+ def test_matrix_has_72_unique_balanced_cells(self):
+  rows=e.matrix();self.assertEqual(72,len(rows));self.assertEqual(72,len({(x['model'],x['task'],x['condition'],x['rep']) for x in rows}));self.assertEqual(rows,e.matrix())
  def test_starters_prompts_commits_and_treatments(self):
   commits=[]
   for c in 'ABC':
@@ -24,7 +24,7 @@ class Pipeline(unittest.TestCase):
   self.assertEqual(1,len(set(commits)))
  def test_capture_keeps_missing_telemetry_null_and_distinguishes_attempt(self):
   run=e.prepare('T2','B',True);m=e.read(run/'manifest.json');m['exit_code']=0;e.save(run/'manifest.json',m)
-  (run/'session.jsonl').write_text(json.dumps({'type':'assistant','message':{'model':e.CFG['model'],'content':[]}})+'\n'+json.dumps({'type':'result','is_error':False})+'\n')
+  (run/'session.jsonl').write_text(json.dumps({'type':'assistant','message':{'model':e.MODELS['sonnet'],'content':[]}})+'\n'+json.dumps({'type':'result','is_error':False})+'\n')
   (run/'capture/skill-events.jsonl').write_text(json.dumps({'hook_event_name':'PreToolUse','tool_input':{'skill':'payment-reliability'}})+'\n')
   e.capture(run);m=e.read(run/'manifest.json');self.assertTrue(m['session_ok']);self.assertFalse(m['skill_loaded_observed']);self.assertIsNone(m['telemetry']['tokens']);self.assertIsNone(m['telemetry']['cost_usd'])
   (run/'capture/skill-events.jsonl').write_text(json.dumps({'hook_event_name':'PostToolUse','tool_input':{'skill':'payment-reliability'}})+'\n')
@@ -57,7 +57,7 @@ class Pipeline(unittest.TestCase):
    self.assertNotIn('ANTHROPIC_API_KEY',args)
    self.assertNotIn('TYPESAFE_API_KEY',args)
    self.assertNotIn('CLAUDE_CODE_OAUTH_TOKEN',args)
-   for event in [{'type':'assistant','message':{'model':e.CFG['model'],'content':[]}},{'type':'result','is_error':False,'total_cost_usd':0.123,'usage':{'input_tokens':20}}]:kwargs['stdout'].write(json.dumps(event)+'\n')
+   for event in [{'type':'assistant','message':{'model':e.MODELS['sonnet'],'content':[]}},{'type':'result','is_error':False,'total_cost_usd':0.123,'usage':{'input_tokens':20}}]:kwargs['stdout'].write(json.dumps(event)+'\n')
    return subprocess.CompletedProcess(args,0)
   with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'must-not-be-used','CLAUDE_CODE_OAUTH_TOKEN':''}),patch.object(e,'call',return_value='image-id'),patch.object(e.subprocess,'run',side_effect=fake_run):e.launch(run)
   m=e.read(run/'manifest.json');self.assertTrue(m['session_ok']);self.assertIsNone(m['telemetry']['cost_usd']);self.assertEqual(m['telemetry']['api_equivalent_cost_usd'],0.123)
@@ -82,4 +82,28 @@ class Pipeline(unittest.TestCase):
   e.save(self.root/'config/runtime-verification.json',{'image_id':'image-one'})
   with patch.object(e,'call',return_value='image-two'):
    with self.assertRaisesRegex(ValueError,'Run preflight'):e.verified_image()
+ def test_model_isolation_keeps_prompt_and_starter_identical(self):
+  sonnet=e.prepare('T2','C',True,model=e.MODELS['sonnet'])
+  haiku=e.prepare('T2','C',True,model=e.MODELS['haiku'])
+  a,b=[e.read(p/'manifest.json') for p in (sonnet,haiku)]
+  for field in ('baseline_commit','prompt_sha256','injected_skill_sha256','effort_requested'):
+   self.assertEqual(a[field],b[field])
+  self.assertEqual(e.read(haiku/'launch/settings.json')['model'],e.MODELS['haiku'])
+  b['exit_code']=0
+  e.save(haiku/'manifest.json',b)
+  for observed,expected in [(e.MODELS['sonnet'],False),(e.MODELS['haiku'],True)]:
+   events=[{'type':'assistant','message':{'model':observed,'content':[]}},{'type':'result'}]
+   (haiku/'session.jsonl').write_text(''.join(json.dumps(event)+'\n' for event in events))
+   e.capture(haiku)
+   self.assertEqual(e.read(haiku/'manifest.json')['session_ok'],expected)
+ def test_pilot_gate_requires_both_models(self):
+  complete={(e.MODELS['sonnet'],task,condition):('old/path','hash')
+            for task in e.PILOT_TASKS for condition in 'ABC'}
+  with patch.object(e,'verified_image',return_value='image'),patch.object(e,'valid_pilots',return_value=complete):
+   with self.assertRaisesRegex(ValueError,'claude-haiku-5-5'):e.pilot_verify('Calibration')
+ def test_report_does_not_mix_models(self):
+  e.report()
+  rows=e.read(self.root/'reports/aggregates.json')
+  self.assertEqual(36,len(rows))
+  self.assertEqual(18,len([a for a in rows if a['model']==e.MODELS['haiku']]))
 if __name__=='__main__':unittest.main()

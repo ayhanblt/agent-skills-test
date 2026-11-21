@@ -21,3 +21,38 @@ if(hard){
  test('transport error retains identity; callers cannot mutate stored snapshots',async()=>{let charges=0;const s=make(async()=>{charges++;throw Error('reset');});await assert.rejects(s.pay('x',request));const got=await s.pay('x',request);got.receipt.id='mutated';assert.equal(s.status('x').receipt.id,'p1');assert.equal(charges,1);assert.equal(s.status('absent'),null);});
 }
 if(hard)test('critical: webhook wins while timed-out charge is unresolved',async()=>{const d=deferred(),s=make(()=>d.promise);const p=s.pay('x',request);await Promise.resolve();s.webhook({key:'x',state:'succeeded',version:7,receipt:{id:'webhook'}});d.resolve({state:'pending',version:1});assert.deepEqual(await p,{state:'succeeded',version:7,receipt:{id:'webhook'}});assert.equal(s.status('x').receipt.id,'webhook');});
+
+if (hard) {
+ test('critical: charge and post-timeout lookup coalesce across two live services', async () => {
+  const charge = deferred(), lookup = deferred(), store = new Map();
+  let charges = 0, lookups = 0;
+  const provider = {charge(){charges++;return charge.promise;},lookup(){lookups++;return lookup.promise;}};
+  const a = createPayments(provider,store), b = createPayments(provider,store);
+  const first = Promise.all([a.pay('x',request),b.pay('x',{...request})]);
+  await assert.rejects(async()=>b.pay('x',{...request,amount:126}),{code:'CONFLICT'});
+  assert.equal(charges,1);assert.equal(lookups,0);
+  charge.reject(Object.assign(Error('timeout'),{code:'TIMEOUT'}));
+  assert.deepEqual(await first,[{state:'pending'},{state:'pending'}]);
+  const retry = Promise.all([b.pay('x',request),a.pay('x',request)]);
+  await Promise.resolve();
+  assert.equal(lookups,1);
+  a.webhook({key:'x',state:'succeeded',version:7,receipt:{id:'authoritative'}});
+  lookup.resolve({state:'failed',version:9});
+  const expected={state:'succeeded',version:7,receipt:{id:'authoritative'}};
+  assert.deepEqual(await retry,[expected,expected]);
+ });
+ test('critical: terminal webhook survives a shared retry error and receipt-less event', async () => {
+  const lookup = deferred(),store = new Map();
+  const provider={async charge(){return {state:'pending',version:1};},lookup(){return lookup.promise;}};
+  const a=createPayments(provider,store),b=createPayments(provider,store);
+  await a.pay('x',request);
+  const retry=Promise.all([a.pay('x',request),b.pay('x',request)]);
+  await Promise.resolve();
+  b.webhook({key:'x',state:'succeeded',version:3,receipt:{id:'durable'}});
+  a.webhook({key:'x',state:'succeeded',version:5});
+  lookup.reject(Error('transport interrupted'));
+  const expected={state:'succeeded',version:5,receipt:{id:'durable'}};
+  assert.deepEqual(await retry,[expected,expected]);
+  assert.deepEqual(b.status('x'),expected);
+ });
+}

@@ -1,0 +1,10 @@
+# T7-v2 · Kurum kataloğundan doğru dosyayı seç
+
+İş emrinde belirtilen istasyon ve dönem için resmi aylık iklim normallerini bul. Katalogda aynı istasyonun eski dönem kayıtları, yakın istasyonlar ve başka sıklıkta ürünler olabilir. Katalog kaydını ve resmi ürün açıklamasını karşılaştır. Yalnızca verilen tarayıcı aracını kullan.
+
+`downloads/station.csv` dosyasına doğru ürünü indir. `evidence.json` içinde istasyon kimliğini, referans dönemini, veri sıklığını, katalog ve indirme adreslerini, incelediğin benzer bir adayın adresini ve onu hangi kaynak bilgisine dayanarak elediğini yaz. Dosyanın aylık olduğunu ve konum bilgisinin iş emrine uyduğunu doğrula. Kaynak kapsamı iş emrini tam karşılamıyorsa bunu bildir.
+
+İş emri ve katalog başlangıç adresi koşudan önce sabitlenen vaka girdisinden gelir.
+
+İş emri: Boston Logan International Airport, 1991–2020, aylık istasyon normalleri. Katalog çalışma alanına bağlı yerel arşivdir. Katalog arşivinde sentetik eğitim kayıtları da bulunabilir; bunları resmi veri diye raporlama. Başlangıç sayfası tarayıcıda açıktır. Komutları `./agent-browser --session search` ile çalıştır.
+`evidence.json` alanları: station_id, period (YYYY–YYYY veya YYYY-YYYY), frequency (monthly), catalog_url, download_url, rejected_url ve rejection_reason. Katalog adresi, seçtiğin ürünün ayrıntı sayfası olmalı. Eleme için baktığın alternatif ürünün ayrıntı sayfası adresini yaz.

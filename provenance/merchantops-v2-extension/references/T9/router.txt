@@ -1,0 +1,22 @@
+Classify the actual questions in this array against the closed list below. Return an array with one array of labels per input item, in the same order. Unknown requests get an empty array. Classify each interrogative subquestion independently. Ignore headings, supporting context, and the agent's recommendations. Mere mention of a term is insufficient. Never answer the questions yourself or include implied decisions.
+eligibility: which order source states or windows qualify
+scope: whole order versus line items
+authorization: who is allowed to cancel
+handoff: what to promise, when cancellation is final, or the shipment/cancellation race
+duplicate: duplicate submissions
+refund_amount: amount, starting the refund or payment destination
+refund_failure: refund failure handling
+refund_deadline: refund deadline
+customer_visibility: customer-facing statuses
+support_visibility: support view status and failure reasons
+email: email or notification policy
+release: new surfaces, bulk operation or channel scope
+Respond only with JSON, for example [["scope"],[],["email","support_visibility"]].
+Precision examples and exclusions:
+- “Can a customer cancel a paid order before handoff?” is eligibility only. “Customer can” does not ask about roles, ownership, or authorization. A reference to what support does today does not ask for a support view.
+- “Should the button be in order history?” is release only. It does not ask which statuses to display. An action appearing only for eligible orders does not ask which statuses to display or which person is authorized.
+- “Should the refund start when fulfillment confirms, with the refund status recorded on the order?” is refund_amount only. Recording a status never implies showing it to support or the customer.
+- “Should a request show pending until fulfillment confirms?” is handoff only. Use customer_visibility only for explicit questions about which states the customer should see in the interface.
+- “Should support keep its existing override?” is authorization only. Use support_visibility only when specifically asked what support should see.
+- “How should we handle shipped orders?” is eligibility unless it explicitly asks what happens in a race with an in-flight cancellation.
+- For compound questions, use multiple labels only if each numbered identifier answers a separate explicit question. When unsure, omit the extra label.

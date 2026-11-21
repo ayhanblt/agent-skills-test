@@ -1,90 +1,17 @@
-# Agent Skills gerçekten yardımcı mı?
-## 36 çalıştırmada skill seçimi, çalışan kod, proje kuralları ve maliyet
+# Agent Skills araştırması
 
-**Durum:** proje kiti hazır; model erişim kontrolü, pilot ve 36 ana koşu henüz çalıştırılmadı. Çalışma yolu: `/Users/ayhanblt/Desktop/projects/agent-skills-test`. Eski `subagent-context-test` yolu/repo'su salt okunur kaynak; değiştirilmedi. provenance/ içindeki orijinaller çalıştırılmaz; scripts/ aynı capture/hash/kör iki geçiş yaklaşımının yeni görevler için uyarlanmış girişleridir.
+T1–T15, Claude Code’da bir göreve özgü skill’in bulunmasını ve katkısını karşılaştırır. Planlanan rapor 198 koşuyu kapsar: mevcut 108 kayıt, T7–T9’un güncellenmiş sürümünde 18 pilot ve T10–T15 için 72 koşu. T7–T9’un görev sürümleri raporda ayrı gösterilir. [T10–T15 tasarımı](tasks/T10-T15.md).
 
-### Dosya ağacı
-```text
-README.md / PROTOCOL.md / RUBRIC.md
-config/                 model, effort, süre/tur sınırı, görev eşlemesi
-skills/                 payment-reliability, react-async-patterns, resumable-transfer
-  */SKILL.md
-tasks/T1..T6/           sabit prompt + starter/{solution.mjs, CONTRACT.md, CLAUDE.md}
-private-tests/          agent'a bağlanmayan ödeme/React/transfer testleri
-selfcheck/              referanslar, mutasyonlar ve araştırma hattı kontrolleri
-scripts/                PowerShell girişleri + Python çalıştırma/kayıt/körleme hattı
-provenance/             eski kaynaktan aynen alınmış script/rubric + commit bilgisi
-pilot/                  model erişim probe'u ve ayrı 9 kalibrasyon koşusu
-runs/01..36/            yalnız ana koşular
-  manifest.json         gerçek/istenen model, yükleme kanıtı, telemetry, durum
-  session.jsonl         ham stream; claude/projects/ altında native oturumlar
-  changes.patch         yeni dosyalar dahil kaynak değişikliği
-  capture/              Skill hook olayları
-  hidden-tests.tap      gizli test sonucu; evaluation/solution.mjs sabit kopya
-  jev-evaluation.json   kör değerlendirmeden sonra
-  capture-index.json / evidence-index.json   SHA-256 kayıtları
-scoring/                kodlu paketler, saklı anahtar/hash, Jev istek/yanıtları, insan formu
-reports/                selfcheck kanıtı, bütün 36 hücre ve betimsel rapor
-Dockerfile / package-lock.json
-```
+## Güncel çalışma
 
-### Bu Mac'te ilk çalıştırma
-Proje yolu: `/Users/ayhanblt/Desktop/projects/agent-skills-test`. Gerekenler Git, Python ≥3.10 (`python3`), Node ≥22 ve çalışan Docker Desktop. PowerShell gerekmez. Claude Code container içinde **2.1.322**, React/test renderer **19.1.0** sürümlerine sabitlenir.
+- [T7–T9 pilotu](provenance/merchantops-followup-v1/pilot-v1/README.md): plan, ön kontrol ve başlatma komutları.
+- [T1–T6 çalışma düzeni](provenance/merchantops-v2-workflow.md): MerchantOps uygulaması, doğrulama ve dondurulmuş koşular.
+- [Önceki deney düzeni](provenance/v1-workflow.md): Docker kullanılan V1 akışı ve eski komutların referansı.
 
-```sh
-cd /Users/ayhanblt/Desktop/projects/agent-skills-test
-npm ci --ignore-scripts
-npm test
-python3 scripts/experiment.py build
-python3 scripts/selfcheck.py --docker
-# .env mevcut değilse şablondan oluşturun.
-test -e .env || (umask 077; cp .env.example .env)
-open -e .env
-python3 scripts/experiment.py login
-python3 scripts/experiment.py preflight
-python3 scripts/experiment.py pilot --task T2 --condition A
-```
+A hedef skill olmadan çalışır. B’de proje içindeki hedef skill’i ajanın kendisi keşfeder. C’de aynı skill içerik olarak verilir ve istem onu kullanmasını açıkça ister. Güncel pilotta Claude Code’un yerleşik skill’leri kapatılır. Eski koşuların koşulları ve ölçütleri dondurulmuş planlarda kayıtlıdır.
 
-TypeSafe anahtarını `.env` içinde `TYPESAFE_API_KEY=` satırına yazıp kaydedin. `.env.example` Git'e eklenebilir. `.env` yalnızca Mac'teki Jev işlemleri için okunur.
+## Depo düzeni
 
-`login` komutu Docker içindeki normal Claude Code abonelik girişini açar. Terminalde gösterilen bağlantıyı tarayıcıda açın ve istenirse kodu terminale yapıştırın. Docker bu girişi ayrı bir alanda saklar. Her koşu sıfırdan başlar ve yalnızca giriş bilgilerini geçici olarak kullanır. Girişin süresi dolarsa `login` komutunu yeniden çalıştırın. [Claude Code giriş belgeleri](https://code.claude.com/docs/en/authentication).
+`tasks/` görevleri, `skills/` çalışma kılavuzlarını, `scripts/` çalıştırıcıları ve `provenance/` dondurulmuş protokol ve kaynakları tutar. Ajan çalışma alanına kopyalanmayan bağımsız testler ve referanslar `private-tests/` ile `selfcheck/` altındadır.
 
-Preflight `claude-sonnet-5-5` ve pinned Jev erişimini gerçek çağrıyla doğrular; model yoksa durur, başka modele geçmez. Claude çağrıları abonelik limitlerini, Jev çağrıları TypeSafe bakiyesini kullanır. Claude'un raporladığı USD değeri varsa API eşdeğeri tahmin olarak ayrı tutulur; gerçek koşu başına abonelik maliyeti bilinmediği için `cost_usd=null` kalır.
-
-### Pilot → ana koşular
-T2, T4, T6'nın her biri için A, B, C pilotlarını birer kez çalıştırın (toplam 9); her komut benzersiz kayıt oluşturur. Hiçbir pilot ana hücreye taşınmaz. Kalibrasyon notundan sonra:
-
-```sh
-python3 scripts/experiment.py pilot-verify --note 'Kalibrasyon bulguları ve tavan/taban değerlendirmesi'
-python3 scripts/experiment.py freeze
-cat matrix.json
-python3 scripts/experiment.py prepare --id 01
-python3 scripts/experiment.py start --id 01
-python3 scripts/experiment.py finish --id 01
-```
-
-Son üç komut 02..36 için matrix.json sırasıyla tekrarlanır. Start ham oturumu ve capture işlemini otomatik kaydeder; Finish ayrı ağsız container'da gizli testleri çalıştırır. Aynı koşu yeniden başlatılmaz. `freeze.json`, matrix.json ve image ID arşivlenir; ana koşular sırasında image yeniden build edilmez. PowerShell girişleri önceki yöntemin uyarlaması olarak saklanır, bu Mac'te kullanılmaları gerekmez.
-
-### Kör Jev ve rapor
-```sh
-python3 scripts/experiment.py blind
-python3 scripts/experiment.py jev --dry-run
-python3 scripts/experiment.py jev
-python3 scripts/experiment.py score
-# Gerekirse scoring/human.json kararlarını bağımsız doldurun; sonra score'u tekrarlayın.
-python3 scripts/experiment.py report
-```
-
-Jev iki geçişi de otomatik yapar; ikinci geçişte dosya ve seçenek sırası ters çevrilir. Var olan ham cevapları yeniden satın almaz. Seçim uyuşmazlıkları/düşük olasılıklar insan formunda görünür, Jev seçimi bu formda gösterilmez. Score tamamlanmamış kararları null bırakır. Eşleme anahtarını kararlar sabitlenene kadar açmayın. Model/prosedür etkisi için nedensel iddia yalnız puandan çıkarılmaz; PROTOCOL.md sınırları geçerlidir.
-
-### Doğrulama ve sınırlar
-Yerel selfcheck altı referans çözümü kabul eder, altı eksik starter'ı reddeder. İlaveten makul ama hatalı çözüm mutasyonları ve çalışma hattı kontrolleri bulunur. Bunlar Sonnet'in başarısını veya pilot kalibrasyonunu ölçmez. Güncel container doğrulama durumu reports/VALIDATION.json içindedir. Abonelik/model erişimi ve pilotlar ayrıca doğrulanır; ana koşular pilot doğrulanmadan açılamaz. C, aynı kullanıcı promptuyla sistem bağlamına birebir skill içeriği ekler; native Skill çağrısından farklı mekanizma olduğu raporda açıkça yazılır.
-
-### Kaynaklar
-- Önceki yöntem ve salt okunur kaynak: https://github.com/ayhanblt/subagent-context-test (commit defb2fb42c5133b835ba51d310a91026dfbda5ee).
-- Önceki makale: https://medium.com/@ayhanblts/alt-agent%C4%B1n%C4%B1z-kurallar%C4%B1n%C4%B1z%C4%B1-biliyor-mu-bd9283d13040 (sayfa bu oturumda okunamadı; içerik hakkında yeni iddia kurulmadı).
-- Model kimliği: https://platform.claude.com/docs/en/models/overview
-- CLI/effort/system prompt: https://code.claude.com/docs/en/cli-reference
-- Skills ve otomatik keşif: https://code.claude.com/docs/en/skills
-- Jev state/questions API: https://docs.typesafe.ai/introduction/quickstart
-Erişim tarihi: 2026-11-18. Model hesabı ve pinned Jev sürümü kullanım öncesi canlı çağrıda doğrulanır.
+Çalıştırıcılar yerel `runs/`, `pilot/`, `reports/` ve `scoring/` klasörlerini gerektiğinde oluşturur. Ham oturumlar, çalışma kopyaları, üretilen raporlar, yerel doğrulama kayıtları ve kimlik bilgileri Git’e eklenmez. Mevcut araştırma kayıtları bu makinede kendi dizinlerinde saklanır.

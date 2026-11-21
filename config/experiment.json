@@ -1,6 +1,5 @@
 {
-  "title": "Agent Skills gerçekten yardımcı mı? — 36 çalıştırmada skill seçimi, çalışan kod, proje kuralları ve maliyet.",
-  "model": "claude-sonnet-5-5",
+  "title": "Agent Skills gerçekten yardımcı mı? — 72 çalıştırmada skill seçimi, çalışan kod, proje kuralları ve maliyet.",
   "effort": "medium",
   "harness_version": "2.1.322",
   "seed": 20261118,
@@ -13,5 +12,9 @@
   "max_turns": 40,
   "timeout_seconds": 1800,
   "judge_model": "jev-1.14.0",
-  "judge_endpoint": "https://api.typesafe.ai/v1/systemone"
+  "judge_endpoint": "https://api.typesafe.ai/v1/systemone",
+  "models": {
+    "sonnet": "claude-sonnet-5-5",
+    "haiku": "claude-haiku-5-5"
+  }
 }

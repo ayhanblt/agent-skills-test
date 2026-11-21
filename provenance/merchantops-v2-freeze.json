@@ -1,0 +1,696 @@
+{
+  "schema": "merchantops-v2-freeze/1",
+  "frozen_utc": "2026-11-20T17:48:09.994021+00:00",
+  "input_id": "43b0ca8ab1bbc8bcdc7c38df50f5e4e40a4b8497d249d83f931964687f9d53db",
+  "freeze_tool_sha256": "73de999f3dfbe579e82562a612531db0cc9a09974cc9539fee63df4e5723006d",
+  "runtime": {
+    "claude_code": "2.1.322 (Claude Code)",
+    "dotnet": "10.0.302",
+    "node": "v26.4.0",
+    "npm": "11.17.0"
+  },
+  "seed": 20261118,
+  "mode": "sequential native macOS",
+  "effort": "medium",
+  "max_turns": 55,
+  "agent_timeout_seconds": 900,
+  "conditions": {
+    "A": "no skill",
+    "B": "installed for automatic selection",
+    "C": "exact skill content preloaded"
+  },
+  "models": {
+    "sonnet": "claude-sonnet-5-5",
+    "haiku": "claude-haiku-5-5"
+  },
+  "judge": {
+    "model": "jev-1.14.0",
+    "passes": 2,
+    "confidence_threshold": 0.8
+  },
+  "functional_scoring": {
+    "T1-T5": "independent build, regressions and hidden tests",
+    "T6": "independent server tests and verified web-document delivery with resumed upload"
+  },
+  "snapshots": {
+    "T1": "d9176b8c03b98c408aff460756001ca544bbfa39ac7f2e6b0879635cc972af64",
+    "T2": "7605e7f4b0bc454fa1bc7ab6a09f074dca4555eabeace7453d56bf027b02e813",
+    "T3": "92a3f3e00b22c700bda4fd0a4e24fcc6a34d6cadf031a7f3451420debcecb84d",
+    "T4": "dda188896cc70f0cfec23a86823213192c31f9dac4ba50e625b7bb669934073b",
+    "T5": "5ddd96a6628e540b56a1c4f7d900a8051315364cd99e27205f55765b142e3dfd",
+    "T6": "69a439d8fe0772e234609d76f451cb6a1bc7baf2621fa8bf5dff2e94195d44ab"
+  },
+  "t6_document": {
+    "source": "https://science.nasa.gov/wp-content/uploads/2024/04/voyager2-interstellar-blue.pdf",
+    "bytes": 67924,
+    "sha256": "aaa3920250089e35370a72d6ccdf26b4d82601da94a384b47294d13ab234276b"
+  },
+  "matrix": [
+    {
+      "id": "01",
+      "model": "claude-sonnet-5-5",
+      "task": "T2",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "02",
+      "model": "claude-haiku-5-5",
+      "task": "T3",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "03",
+      "model": "claude-sonnet-5-5",
+      "task": "T4",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "04",
+      "model": "claude-sonnet-5-5",
+      "task": "T6",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": true
+    },
+    {
+      "id": "05",
+      "model": "claude-sonnet-5-5",
+      "task": "T3",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "06",
+      "model": "claude-haiku-5-5",
+      "task": "T6",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": true
+    },
+    {
+      "id": "07",
+      "model": "claude-haiku-5-5",
+      "task": "T1",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "08",
+      "model": "claude-haiku-5-5",
+      "task": "T3",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "09",
+      "model": "claude-haiku-5-5",
+      "task": "T5",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "10",
+      "model": "claude-sonnet-5-5",
+      "task": "T4",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "11",
+      "model": "claude-haiku-5-5",
+      "task": "T6",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": true
+    },
+    {
+      "id": "12",
+      "model": "claude-haiku-5-5",
+      "task": "T1",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "13",
+      "model": "claude-sonnet-5-5",
+      "task": "T4",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "14",
+      "model": "claude-sonnet-5-5",
+      "task": "T3",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "15",
+      "model": "claude-haiku-5-5",
+      "task": "T2",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "16",
+      "model": "claude-sonnet-5-5",
+      "task": "T6",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": true
+    },
+    {
+      "id": "17",
+      "model": "claude-sonnet-5-5",
+      "task": "T6",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": true
+    },
+    {
+      "id": "18",
+      "model": "claude-haiku-5-5",
+      "task": "T2",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "19",
+      "model": "claude-haiku-5-5",
+      "task": "T4",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "20",
+      "model": "claude-haiku-5-5",
+      "task": "T1",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "21",
+      "model": "claude-haiku-5-5",
+      "task": "T6",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": true
+    },
+    {
+      "id": "22",
+      "model": "claude-sonnet-5-5",
+      "task": "T1",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "23",
+      "model": "claude-haiku-5-5",
+      "task": "T5",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "24",
+      "model": "claude-haiku-5-5",
+      "task": "T3",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "25",
+      "model": "claude-sonnet-5-5",
+      "task": "T5",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "26",
+      "model": "claude-sonnet-5-5",
+      "task": "T3",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "27",
+      "model": "claude-sonnet-5-5",
+      "task": "T1",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "28",
+      "model": "claude-sonnet-5-5",
+      "task": "T4",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "29",
+      "model": "claude-sonnet-5-5",
+      "task": "T2",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "30",
+      "model": "claude-haiku-5-5",
+      "task": "T5",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "31",
+      "model": "claude-haiku-5-5",
+      "task": "T6",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": true
+    },
+    {
+      "id": "32",
+      "model": "claude-sonnet-5-5",
+      "task": "T2",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "33",
+      "model": "claude-sonnet-5-5",
+      "task": "T5",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "34",
+      "model": "claude-haiku-5-5",
+      "task": "T3",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "35",
+      "model": "claude-haiku-5-5",
+      "task": "T5",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "36",
+      "model": "claude-haiku-5-5",
+      "task": "T5",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "37",
+      "model": "claude-sonnet-5-5",
+      "task": "T6",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": true
+    },
+    {
+      "id": "38",
+      "model": "claude-haiku-5-5",
+      "task": "T2",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "39",
+      "model": "claude-haiku-5-5",
+      "task": "T4",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "40",
+      "model": "claude-haiku-5-5",
+      "task": "T1",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "41",
+      "model": "claude-haiku-5-5",
+      "task": "T4",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "42",
+      "model": "claude-haiku-5-5",
+      "task": "T6",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": true
+    },
+    {
+      "id": "43",
+      "model": "claude-sonnet-5-5",
+      "task": "T5",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "44",
+      "model": "claude-haiku-5-5",
+      "task": "T3",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "45",
+      "model": "claude-sonnet-5-5",
+      "task": "T6",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": true
+    },
+    {
+      "id": "46",
+      "model": "claude-haiku-5-5",
+      "task": "T1",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "47",
+      "model": "claude-sonnet-5-5",
+      "task": "T2",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "48",
+      "model": "claude-sonnet-5-5",
+      "task": "T4",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "49",
+      "model": "claude-sonnet-5-5",
+      "task": "T3",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "50",
+      "model": "claude-haiku-5-5",
+      "task": "T4",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "51",
+      "model": "claude-haiku-5-5",
+      "task": "T4",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "52",
+      "model": "claude-sonnet-5-5",
+      "task": "T4",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "53",
+      "model": "claude-sonnet-5-5",
+      "task": "T1",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "54",
+      "model": "claude-sonnet-5-5",
+      "task": "T6",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": true
+    },
+    {
+      "id": "55",
+      "model": "claude-sonnet-5-5",
+      "task": "T3",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "56",
+      "model": "claude-sonnet-5-5",
+      "task": "T1",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "57",
+      "model": "claude-haiku-5-5",
+      "task": "T4",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "58",
+      "model": "claude-haiku-5-5",
+      "task": "T6",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": true
+    },
+    {
+      "id": "59",
+      "model": "claude-sonnet-5-5",
+      "task": "T3",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "60",
+      "model": "claude-sonnet-5-5",
+      "task": "T2",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "61",
+      "model": "claude-haiku-5-5",
+      "task": "T2",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "62",
+      "model": "claude-sonnet-5-5",
+      "task": "T5",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "63",
+      "model": "claude-haiku-5-5",
+      "task": "T2",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "64",
+      "model": "claude-haiku-5-5",
+      "task": "T5",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "65",
+      "model": "claude-haiku-5-5",
+      "task": "T1",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "66",
+      "model": "claude-haiku-5-5",
+      "task": "T3",
+      "condition": "A",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "67",
+      "model": "claude-sonnet-5-5",
+      "task": "T5",
+      "condition": "C",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "68",
+      "model": "claude-sonnet-5-5",
+      "task": "T1",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": false
+    },
+    {
+      "id": "69",
+      "model": "claude-sonnet-5-5",
+      "task": "T1",
+      "condition": "C",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "70",
+      "model": "claude-sonnet-5-5",
+      "task": "T2",
+      "condition": "B",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "71",
+      "model": "claude-haiku-5-5",
+      "task": "T2",
+      "condition": "A",
+      "rep": 2,
+      "web_enabled": false
+    },
+    {
+      "id": "72",
+      "model": "claude-sonnet-5-5",
+      "task": "T5",
+      "condition": "B",
+      "rep": 1,
+      "web_enabled": false
+    }
+  ],
+  "evidence": {
+    "pilot/merchantops-v2-t6-web/merchantops-v2-preflight.json": "9634687686b119dbd16f7bbdbcf39215bb6e5e147230bbc7a52e65a22b740ddc",
+    "reports/merchantops-v2-t6-web/validation/summary.json": "e4ff37567d1a75582baf8050aef312a9dfbb7ec0bdf2c6d23da63ca1a347e5aa",
+    "pilot/merchantops-v2-t6-web/observer-repair.json": "a5f4f3be7d1a473b9c21be4d8c8514f59f441f1f99f82a0f7f3f6904fe195d27",
+    "reports/merchantops-v2-t6-web/pilot-results.json": "ee0efc9b5e34a3e5a1b2f5bfe58c9d819136c894f12534dbf8a671db3ac4a21f",
+    "private-tests/merchantops/t6-web.json": "621238b583bc7e5096465b306b58cecd9eff5a01212d9c0d066ffdf1627afe85",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-web-b9eeba1ccea04048b4637ac03b0e6892/manifest.json": "e5e4337461bffda8fda7f73cdd2e64451d440974f95afcd8a317b34e1cf6790c",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-web-8238005f7f094811bdb903754f419462/manifest.json": "7377fb3cf80d1820eb22a66ab8a0e21dbc99b9e7eb7c389702296874fa5cb14e",
+    "reports/merchantops-v2-recheck/pilot-results.json": "7c2e8e8769060e419f8b2dd310695b338601c11b48b23f5b01acc190cbbbbbe3",
+    "pilot/merchantops-v2-recheck/merchantops-v2-42fe7736464f476281d450fb235db75c/manifest.json": "83c27a1b96ad27a5cbdf049d889cdaa1fd0154f22756bf9e30e413e1ee1c4b94",
+    "pilot/merchantops-v2-recheck/merchantops-v2-42fe7736464f476281d450fb235db75c/evidence-index.json": "905c8ff2a4d2e378e6e416f00335baca849c43f3d79fd7022732e4fd260fbd8a",
+    "pilot/merchantops-v2-recheck/merchantops-v2-42fe7736464f476281d450fb235db75c/jev-evaluation.json": "b3785b3fa9af7069c6a38a06287f4f405f25325ca49db4f56ed550630d25266d",
+    "pilot/merchantops-v2-recheck/merchantops-v2-bf6e4fefd9e94039b5e6aee237bd5524/manifest.json": "1f3d0045a2adf0b6148adc694345194eb0886884a7a249876385c2913cfcbdc4",
+    "pilot/merchantops-v2-recheck/merchantops-v2-bf6e4fefd9e94039b5e6aee237bd5524/evidence-index.json": "f71bb28a489302b4cf30da00d63940b2ee2f62eb7f43576e1e60f4628726bd09",
+    "pilot/merchantops-v2-recheck/merchantops-v2-bf6e4fefd9e94039b5e6aee237bd5524/jev-evaluation.json": "bdf7bdec700fd7e2757c6c58c88117a96184d8abcf65a62efb46ed04562ff907",
+    "pilot/merchantops-v2-recheck/merchantops-v2-8ebe91d73ded42feb0b09b9a0c87a14f/manifest.json": "38a13e873ebba4f7560ee2f70a2292615174af704c134964e8cb7a6f58201116",
+    "pilot/merchantops-v2-recheck/merchantops-v2-8ebe91d73ded42feb0b09b9a0c87a14f/evidence-index.json": "98fbc7fe480258a0cbdfa95a1ae424f9d50af934c5d966884901fb7e86ec4cd2",
+    "pilot/merchantops-v2-recheck/merchantops-v2-8ebe91d73ded42feb0b09b9a0c87a14f/jev-evaluation.json": "3a2f428980c3a339f82da54893856187983f9cf651b0b759f4edbd61e304fe1e",
+    "pilot/merchantops-v2-recheck/merchantops-v2-eb16f7ea554440cea0be9697f83672d3/manifest.json": "a02ec98d0d43b12b6afe6b5c92d3c2d28a2b08c9e8c32317b9adc1562e42805f",
+    "pilot/merchantops-v2-recheck/merchantops-v2-eb16f7ea554440cea0be9697f83672d3/evidence-index.json": "f528bf6027c88bd928b30a31f2a7b156a6fa46bbe20144b41713f19384d34f40",
+    "pilot/merchantops-v2-recheck/merchantops-v2-eb16f7ea554440cea0be9697f83672d3/jev-evaluation.json": "e8f5113ade42c9a1150e5e777ebfc4abcbb37d67759b0e50f42587eb88b4c40c",
+    "pilot/merchantops-v2-recheck/merchantops-v2-c85e9351923b4436a33e028315de3f73/manifest.json": "2d2396ed6e44c3fe351645e69645aae6c623d653378850cb12b1770098360af0",
+    "pilot/merchantops-v2-recheck/merchantops-v2-c85e9351923b4436a33e028315de3f73/evidence-index.json": "3d7761066c94fb9130437fab0846a62dd521c629603332bfd3935d1868e5ec8a",
+    "pilot/merchantops-v2-recheck/merchantops-v2-c85e9351923b4436a33e028315de3f73/jev-evaluation.json": "5cc527e4b6df8b905aea8720d00c8c69f549118145f3d9d2f333071148fb1cdc",
+    "pilot/merchantops-v2-recheck/merchantops-v2-c59b34334c7c4f7e8f983d3285fb686a/manifest.json": "151b2b47dcbef61d0af53926d52c9ecc26522eb2f524cea5eb9705d087c2a5d6",
+    "pilot/merchantops-v2-recheck/merchantops-v2-c59b34334c7c4f7e8f983d3285fb686a/evidence-index.json": "87034957d05e8a40ab134b6378dec9a33a313980ac979016a0b12e23a22a09eb",
+    "pilot/merchantops-v2-recheck/merchantops-v2-c59b34334c7c4f7e8f983d3285fb686a/jev-evaluation.json": "cf283b5d8ffe4ac22e5e145f0ef528981e31aa63ae071674e389a401e72d0f2d",
+    "pilot/merchantops-v2-recheck/merchantops-v2-012457d0612249e6b1babda1a239a73d/manifest.json": "e1bd79f38e67518841aa482796999921ede3f7b7f52eef50a51ef076f220e5c3",
+    "pilot/merchantops-v2-recheck/merchantops-v2-012457d0612249e6b1babda1a239a73d/evidence-index.json": "e4943e14a8a9b2f323a9c54e447b7b55cb55a93dc75abb82b2e6b41c59b091d1",
+    "pilot/merchantops-v2-recheck/merchantops-v2-012457d0612249e6b1babda1a239a73d/jev-evaluation.json": "874ea1b93bc813fa990722be00f15cf5f4d1600a6ca3bead0a05671ea92a1752",
+    "pilot/merchantops-v2-recheck/merchantops-v2-762ac64dacfe40c19d3050f75fbfdfaf/manifest.json": "d08bab513da697e86f846225cc85872717f3deb81ea0bd69733dfb2049000edf",
+    "pilot/merchantops-v2-recheck/merchantops-v2-762ac64dacfe40c19d3050f75fbfdfaf/evidence-index.json": "87f1b8f70f495d4c10d39ec57a17fd759e934b04941cdbc4eb8bdc6a08966304",
+    "pilot/merchantops-v2-recheck/merchantops-v2-762ac64dacfe40c19d3050f75fbfdfaf/jev-evaluation.json": "8bc27edae24026f7a7b3a98a904230b2e3021b831c4508e3c6677a202d24c495",
+    "pilot/merchantops-v2-recheck/merchantops-v2-4d4d4162f5394e6dab6e05ac67a72e73/manifest.json": "3b44cd2074a1a6ad9e334fc960ddb237c30aaab13a6cdb53cd295b7d800ce5fb",
+    "pilot/merchantops-v2-recheck/merchantops-v2-4d4d4162f5394e6dab6e05ac67a72e73/evidence-index.json": "4d500dd0c1733d07e2db12243cad2d89b9325a4d460e0b1ece0610241dc26446",
+    "pilot/merchantops-v2-recheck/merchantops-v2-4d4d4162f5394e6dab6e05ac67a72e73/jev-evaluation.json": "cbd8dedfbf19d88e2fcdfc8ac3f6bfd2fa38436a788b8d1b16c4723ff903bc6e",
+    "pilot/merchantops-v2-recheck/merchantops-v2-f0576ea068a74b39b950cf9f70a14a28/manifest.json": "f0570ef01af491b7b4eefdf1144e55b5572f8a1b267fabcec4b06afe2ee407ab",
+    "pilot/merchantops-v2-recheck/merchantops-v2-f0576ea068a74b39b950cf9f70a14a28/evidence-index.json": "903ea9c49fd0dab37aaeaf121d4ddf5b8d23bc1407e74f6edd3929392f01efff",
+    "pilot/merchantops-v2-recheck/merchantops-v2-f0576ea068a74b39b950cf9f70a14a28/jev-evaluation.json": "bff75925dbf62d52b2b76124488ed88b480737663fd41ceec8f1c6abfd518c24",
+    "pilot/merchantops-v2-recheck/merchantops-v2-4b6583daf0d24989b6fa166d4ae6dd05/manifest.json": "54a82e4d8f09de7263e0192e4b7c95e735ab4a26e82d577026a3be3705b5fb9f",
+    "pilot/merchantops-v2-recheck/merchantops-v2-4b6583daf0d24989b6fa166d4ae6dd05/evidence-index.json": "3f1b084929f3145128c2b22defe4b1643adde5d4f72299c9b3ba3cad870cb099",
+    "pilot/merchantops-v2-recheck/merchantops-v2-4b6583daf0d24989b6fa166d4ae6dd05/jev-evaluation.json": "7fb3673464168320b5169f8d25519fdde33455e7c79cb8621f72ced5ca6fe3dd",
+    "pilot/merchantops-v2-recheck/merchantops-v2-440d6aab45e641928c69f0504d1a18bb/manifest.json": "17ba5fc4a15e3d552baf886bfd519d290b99b25ae5c8e6eb0a78474de54745da",
+    "pilot/merchantops-v2-recheck/merchantops-v2-440d6aab45e641928c69f0504d1a18bb/evidence-index.json": "d123a26cc7c113e92fe713540a7d9a709cc521acf4b0872d880b4bbf2e875b2a",
+    "pilot/merchantops-v2-recheck/merchantops-v2-440d6aab45e641928c69f0504d1a18bb/jev-evaluation.json": "a6666992bf27d51e3d05cc0e7a76ec5afe6aaf4bf0a3dbdac240ee0780343cc6",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-a23f321a0af1419b88f5028f8ef8e73c/manifest.json": "6cf7af9f4f2543b3263a697aff0675e702ad0c88c46fb8d972f16563974db2d0",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-a23f321a0af1419b88f5028f8ef8e73c/evidence-index.json": "84ba444594b6653bec2d16ccafe81e958f0948df742ae98a8aca08914ec4600f",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-a23f321a0af1419b88f5028f8ef8e73c/jev-evaluation.json": "c0b5a0674664cd47351e394c69299b3795e6b44bc8070b281c10c75884e0a3da",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-a23f321a0af1419b88f5028f8ef8e73c/delivery.json": "14dad8c91c6eceb9709d5c2248f133fdb18f14adc442e95d504486ae5acdc647",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-54adee56b77a447f8268978384d5db67/manifest.json": "5d782654e719e59af99f2c858da486e738626431780faf1fadf3c79ff8639c90",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-54adee56b77a447f8268978384d5db67/evidence-index.json": "255d51518753fe472b3eb01445c284de755297d0a3096dbc2339e673fd078a42",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-54adee56b77a447f8268978384d5db67/jev-evaluation.json": "7404ad356cb5031a5161d3d890486b2e86bd1be4fdf3fbee1d49a101f16846ab",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-54adee56b77a447f8268978384d5db67/delivery.json": "5d84a08dfd0c55771a00b77bb7eb87bf641e48cc7059b78eb06b58032acfb087",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-23bb9dbe52dd4afc8933282fd66656bb/manifest.json": "1de5933a5d14e2d06cabf28d28be8343d063217b45516eec3d8ca8287bcc3bcd",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-23bb9dbe52dd4afc8933282fd66656bb/evidence-index.json": "ab7ba74bcfe3b63cab9ddd58a07437407119d0c121ec491cbd2532b39045e9e3",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-23bb9dbe52dd4afc8933282fd66656bb/jev-evaluation.json": "3cccb7355beb2713011afa5ec9f426a67c802a11776dfa5adbd09d84b9b28fd0",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-23bb9dbe52dd4afc8933282fd66656bb/delivery.json": "eb673258f85bbc027d9c9318c1a43af5e6a836dd0004b04c6abaf324dae073e8",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-1da260c7ea614ae4a88a94c174e92001/manifest.json": "40d7b83db1a81eafd9e25cc1374631043d7ade927261a1acca057c4eb1c6a300",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-1da260c7ea614ae4a88a94c174e92001/evidence-index.json": "8c5342c8f10ca7ea0226b785e0ee443f5c925031f9325bc79d1ef1be9991e33a",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-1da260c7ea614ae4a88a94c174e92001/jev-evaluation.json": "4cd2b5d3c11b935e44fceafef2dcdc756fe38addcf31065e5fcf7162b6f56a8f",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-1da260c7ea614ae4a88a94c174e92001/delivery.json": "14198d2b01899c703aeca952842959814bee30e98931563a81fd84e8215e4c0a",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-5b723b43b1704ae981dbe64dc3bca0bf/manifest.json": "dacc3027cc37046caebc063a42c898b34dba1aceacd4651a59f290613b42f6b7",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-5b723b43b1704ae981dbe64dc3bca0bf/evidence-index.json": "4f868b474a7b3fa2294d6e833e24db21a891e57411aaf61f4a4493d949c15b55",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-5b723b43b1704ae981dbe64dc3bca0bf/jev-evaluation.json": "ea67a6417be08d00611a76f7d4e93bce3ae6cdf06bd0ef832ccaa03a07334025",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-5b723b43b1704ae981dbe64dc3bca0bf/delivery.json": "7a6943056a5c5cbeaa2d6fbd262f253f1df3303d23ae00260d1a08464c0de763",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-c87a7b00896040abbe3bc4a1bb667316/manifest.json": "4fd6477b70720a62b8a8f588cb231e2dd5ab682f7adcc19e3785584dc61677d7",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-c87a7b00896040abbe3bc4a1bb667316/evidence-index.json": "51b52d51d5eda4627140f688be2ee5f3d36ed26f5e3fb5670bc40c1ea858a8f2",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-c87a7b00896040abbe3bc4a1bb667316/jev-evaluation.json": "4be39bb9a5814f247de11004d11976331e5ed97838172ed4fec1d86d6dccbc98",
+    "pilot/merchantops-v2-t6-web/merchantops-v2-c87a7b00896040abbe3bc4a1bb667316/delivery.json": "e19718563d3d2529fa055efbff2828de17e194101766437988b5c997ad6a93a9"
+  }
+}

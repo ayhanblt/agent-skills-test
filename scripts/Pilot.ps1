@@ -1,7 +1,7 @@
 #requires -Version 7.0
 [CmdletBinding()]
-param([Parameter(Mandatory)][ValidateSet('T2','T4','T6')][string]$Task, [Parameter(Mandatory)][ValidateSet('A','B','C')][string]$Condition)
+param([Parameter(Mandatory)][ValidateSet('T2','T4','T6')][string]$Task, [Parameter(Mandatory)][ValidateSet('A','B','C')][string]$Condition, [ValidateSet('sonnet','haiku')][string]$Model='sonnet')
 $ErrorActionPreference='Stop'
-$arguments=@('pilot','--task',$Task,'--condition',$Condition)
+$arguments=@('pilot','--task',$Task,'--condition',$Condition,'--model',$Model)
 & python (Join-Path $PSScriptRoot 'experiment.py') @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Research step failed; inspect saved evidence before proceeding.' }

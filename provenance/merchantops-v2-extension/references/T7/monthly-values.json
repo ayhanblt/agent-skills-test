@@ -1,0 +1,86 @@
+{
+  "1": {
+    "MLY-TAVG-NORMAL": 29.9,
+    "MLY-TMAX-NORMAL": 36.8,
+    "MLY-TMIN-NORMAL": 23.1,
+    "MLY-PRCP-NORMAL": 3.39,
+    "MLY-SNOW-NORMAL": 14.3
+  },
+  "2": {
+    "MLY-TAVG-NORMAL": 31.8,
+    "MLY-TMAX-NORMAL": 39.0,
+    "MLY-TMIN-NORMAL": 24.6,
+    "MLY-PRCP-NORMAL": 3.21,
+    "MLY-SNOW-NORMAL": 14.4
+  },
+  "3": {
+    "MLY-TAVG-NORMAL": 38.3,
+    "MLY-TMAX-NORMAL": 45.5,
+    "MLY-TMIN-NORMAL": 31.1,
+    "MLY-PRCP-NORMAL": 4.17,
+    "MLY-SNOW-NORMAL": 9.0
+  },
+  "4": {
+    "MLY-TAVG-NORMAL": 48.6,
+    "MLY-TMAX-NORMAL": 56.4,
+    "MLY-TMIN-NORMAL": 40.8,
+    "MLY-PRCP-NORMAL": 3.63,
+    "MLY-SNOW-NORMAL": 1.6
+  },
+  "5": {
+    "MLY-TAVG-NORMAL": 58.4,
+    "MLY-TMAX-NORMAL": 66.5,
+    "MLY-TMIN-NORMAL": 50.3,
+    "MLY-PRCP-NORMAL": 3.25,
+    "MLY-SNOW-NORMAL": 0.0
+  },
+  "6": {
+    "MLY-TAVG-NORMAL": 68.0,
+    "MLY-TMAX-NORMAL": 76.2,
+    "MLY-TMIN-NORMAL": 59.7,
+    "MLY-PRCP-NORMAL": 3.89,
+    "MLY-SNOW-NORMAL": 0.0
+  },
+  "7": {
+    "MLY-TAVG-NORMAL": 74.1,
+    "MLY-TMAX-NORMAL": 82.1,
+    "MLY-TMIN-NORMAL": 66.0,
+    "MLY-PRCP-NORMAL": 3.27,
+    "MLY-SNOW-NORMAL": 0.0
+  },
+  "8": {
+    "MLY-TAVG-NORMAL": 72.7,
+    "MLY-TMAX-NORMAL": 80.4,
+    "MLY-TMIN-NORMAL": 65.1,
+    "MLY-PRCP-NORMAL": 3.23,
+    "MLY-SNOW-NORMAL": 0.0
+  },
+  "9": {
+    "MLY-TAVG-NORMAL": 65.6,
+    "MLY-TMAX-NORMAL": 73.1,
+    "MLY-TMIN-NORMAL": 58.2,
+    "MLY-PRCP-NORMAL": 3.56,
+    "MLY-SNOW-NORMAL": 0.0
+  },
+  "10": {
+    "MLY-TAVG-NORMAL": 54.8,
+    "MLY-TMAX-NORMAL": 62.1,
+    "MLY-TMIN-NORMAL": 47.5,
+    "MLY-PRCP-NORMAL": 4.03,
+    "MLY-SNOW-NORMAL": 0.2
+  },
+  "11": {
+    "MLY-TAVG-NORMAL": 44.7,
+    "MLY-TMAX-NORMAL": 51.6,
+    "MLY-TMIN-NORMAL": 37.9,
+    "MLY-PRCP-NORMAL": 3.66,
+    "MLY-SNOW-NORMAL": 0.7
+  },
+  "12": {
+    "MLY-TAVG-NORMAL": 35.7,
+    "MLY-TMAX-NORMAL": 42.2,
+    "MLY-TMIN-NORMAL": 29.2,
+    "MLY-PRCP-NORMAL": 4.3,
+    "MLY-SNOW-NORMAL": 9.0
+  }
+}

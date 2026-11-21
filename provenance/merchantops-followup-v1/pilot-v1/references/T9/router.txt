@@ -1,0 +1,9 @@
+Classify the numbered questions in the input JSON array. Return only JSON with one array of labels per question. Classify only explicitly asked choices, not context, suggestions or answers. Unknown questions get [].
+handoff: finality, how to resolve the conflict between immediate cancellation and fulfillment confirmation, or which outcome wins an in-flight handoff race
+authorization: order ownership, permissions, actors
+eligibility: eligible order state or whole order vs line items
+duplicate: repeated submissions, duplicate request/refund or idempotency
+timeout: missing fulfillment reply, unknown outcome, escalation or retry policy for timeout
+refund: when to start a refund, amount or payment destination
+visibility: order history statuses or email notification
+For example “who can cancel?” gives ["authorization"]. “What if fulfillment never replies?” gives ["timeout"], not ["handoff"]. “Can I use a button on the order page?” gives [], unless it explicitly asks which status to display.

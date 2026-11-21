@@ -1,0 +1,6 @@
+{
+  "DK-person": {"table":"env_wasmun","operation":"GEN","unit":"KG_HAB","start":814,"end":758,"delta":-56,"decision":"comparable"},
+  "IE-person": {"table":"env_wasmun","operation":"GEN","unit":"KG_HAB","start":595,"end":576,"delta":-19,"decision":"qualified"},
+  "DK-total": {"start":null,"end":null,"delta":null,"decision":"blocked"},
+  "SE-total": {"start":null,"end":null,"delta":null,"decision":"blocked"}
+}

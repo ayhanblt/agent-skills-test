@@ -1,0 +1,14 @@
+{
+  "eligibility": "Self-service is for paid orders before shipment handoff. Unpaid, partially handed-off, and shipped orders use existing support or returns.",
+  "scope": "This release cancels a whole order only.",
+  "authorization": "Only the authenticated order owner can self-cancel. Support keeps its existing channel and permissions.",
+  "handoff": "The click means cancellation requested. Cancellation requires fulfillment confirmation. If handoff wins, record the decline and route to returns.",
+  "duplicate": "Repeat submissions show the existing outcome and do not create a second cancellation or refund.",
+  "refund_amount": "A confirmed cancellation starts the existing asynchronous refund of the full captured amount to the original payment method.",
+  "refund_failure": "Support handles refund provider failures.",
+  "refund_deadline": "No fixed refund deadline is promised.",
+  "customer_visibility": "Order history shows requested, canceled, unable to cancel, and the refund status.",
+  "support_visibility": "Support sees the final outcome and failure reason.",
+  "email": "No new email notification in this release.",
+  "release": "Use the existing order history and support views. Bulk operations and additional channels are out of scope."
+}

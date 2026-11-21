@@ -1,0 +1,5 @@
+# T9-v2 · Çelişen ekip taleplerini uygulama planına çevir
+
+Girdilerde mevcut davranış ve ekiplerin ayrı notları var. Ekiplerin ortak hedefini uygulama brifine çevir. Mevcut sistemde doğrulanabilen gerçekleri, yetkili paydaşın kararlarını ve henüz açık olan soruları belirt. Uygulama yapma.
+
+En fazla iki görüşme turu kullan. Her turda QUESTIONS başlığı altında bağımsız soruları ayrı numaralı satırlarda yaz. Önerilerini Recommendation başlığıyla ayır. İkinci turda ilk turda gelen cevapların açtığı kritik sorulara öncelik ver. Son çıktıyı BRIEF başlığıyla ver. Her kritik kuralın dayanağını, uygulanabilir kabul örneğini ve açık kaldıysa iş üzerindeki etkisini yaz.

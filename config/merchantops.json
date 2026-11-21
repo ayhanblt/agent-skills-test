@@ -1,0 +1,11 @@
+{
+  "revision": "merchantops-v2",
+  "skill_version": "2.0.0",
+  "max_turns": 55,
+  "timeout_seconds": 900,
+  "skills": {
+    "T1":"payment-reconciliation-specialist","T2":"payment-reconciliation-specialist",
+    "T3":"react-consistency-specialist","T4":"react-consistency-specialist",
+    "T5":"resumable-upload-protocol-specialist","T6":"resumable-upload-protocol-specialist"
+  }
+}

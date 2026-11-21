@@ -1,0 +1,80 @@
+[
+  [
+    "Do buyers have to own the order to cancel in self-service?",
+    [
+      "authorization"
+    ]
+  ],
+  [
+    "Who is allowed to request a cancellation?",
+    [
+      "authorization"
+    ]
+  ],
+  [
+    "What if the customer clicks submit twice?",
+    [
+      "duplicate"
+    ]
+  ],
+  [
+    "How should repeat cancellation requests behave?",
+    [
+      "duplicate"
+    ]
+  ],
+  [
+    "Should we collect a cancellation reason (required, optional, or none), and should customers get an email confirmation?",
+    [
+      "email"
+    ]
+  ],
+  [
+    "Can customers cancel individual line items from a multi-item order, or only the whole order? Recommended: whole order only for the first release, to keep the fulfillment contract simple.",
+    [
+      "scope"
+    ]
+  ],
+  [
+    "When a paid order is cancelled, should the refund always go in full to the original payment method? Are shipping, taxes, or fees ever withheld?",
+    [
+      "refund_amount"
+    ]
+  ],
+  [
+    "Who can cancel and what if the fulfillment handoff wins the race?",
+    [
+      "authorization",
+      "handoff"
+    ]
+  ],
+  [
+    "Could we use a different typeface?",
+    []
+  ],
+  [
+    "Should customers be able to cancel only while an order is paid and before shipment handoff, the same rule support uses today, with orders already marked shipped sent to the returns process?",
+    [
+      "eligibility"
+    ]
+  ],
+  [
+    "Should a confirmed cancellation automatically start the existing provider-backed refund workflow, with the refund status recorded on the order?",
+    [
+      "refund_amount"
+    ]
+  ],
+  [
+    "Should the order history page get a Cancel order action that appears only for eligible orders, while support keeps its existing override for exceptions?",
+    [
+      "authorization",
+      "release"
+    ]
+  ],
+  [
+    "Should the customer's cancel become cancellation requested and be confirmed only after fulfillment accepts it?",
+    [
+      "handoff"
+    ]
+  ]
+]
