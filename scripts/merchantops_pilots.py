@@ -54,6 +54,14 @@ def ready(row):
     return (RUNS/row['run_id']/'complete.json').is_file()
 
 
+def tool_path(inherited):
+    # Terminal shells do not all load Homebrew or Claude's per-user bin directory.
+    entries = [str(Path.home()/'.local/bin'), '/opt/homebrew/bin', '/opt/homebrew/sbin',
+               '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']
+    entries.extend(path for path in inherited.split(os.pathsep) if path)
+    return os.pathsep.join(dict.fromkeys(entries))
+
+
 def baseline(runner):
     public = [p for t in TASKS for p in starter(t).iterdir() if p.is_file()]
     private = [REFERENCE/'pilot_grade.py',REFERENCE/'pilot-T12.json',
@@ -81,7 +89,7 @@ def local_env(runner, stage, work):
     safe = {k:v for k,v in runner.env().items() if k in ('PATH','LANG','LC_ALL','TZ')}
     chrome = str(CHROME)
     settings = dict(safe, HOME=str(stage),TMPDIR=str(stage),
-                    PATH=f'{RUNTIME}/python/bin:{RUNTIME}/npm/node_modules/.bin:'+safe.get('PATH',''),
+                    PATH=f'{RUNTIME}/python/bin:{RUNTIME}/npm/node_modules/.bin:'+tool_path(safe.get('PATH','')),
                     PILOT_CHROME=chrome, PLAYWRIGHT_MCP_EXECUTABLE_PATH=chrome,
                     PYTHONDONTWRITEBYTECODE='1')
     if work.name == 'work':
@@ -212,8 +220,13 @@ def main():
         raise SystemExit('Missing .local/pilot-tools; see README.md for setup.')
     if Path(sys.prefix) != PYTHON.parent.parent:
         os.execv(str(PYTHON),[str(PYTHON),__file__,*sys.argv[1:]])
+    os.environ['PATH'] = tool_path(os.environ.get('PATH', ''))
     runner = old.harness()
-    if baseline(runner) != old.json_file(FREEZE):
+    try:
+        current = baseline(runner)
+    except FileNotFoundError as error:
+        raise SystemExit(f"Required pilot tool not found: {error.filename}. See provenance/pilot.md.") from None
+    if current != old.json_file(FREEZE):
         raise SystemExit('T10–T15 pilot files or runtime differ from the recorded pilot setup.')
     if args.preflight:
         subprocess.run([sys.executable,str(OLD),'--preflight'],check=True)
