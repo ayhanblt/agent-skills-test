@@ -8,7 +8,7 @@ import shutil
 from tempfile import TemporaryDirectory
 from urllib.request import urlopen
 
-from run import (ROOT, PRODUCTS, audit_skills, catalog, eligible_matches, json_file, rows,
+from run import (ROOT, PRODUCTS, audit_skills, catalog, catalog_prompt, isolate_skill_settings, eligible_matches, json_file, rows,
                  score_t7, score_t8, skill_policy)
 
 
@@ -33,6 +33,14 @@ def verify():
         for row in rows():
             prompt = skill_policy(row, file, 'Public task')
             assert (row['target_skill'] in prompt) == (row['condition'] == 'C')
+    audit_skills({'condition':'B','target_skill':'agent-browser'},
+                 [json.dumps({'subtype':'init','skills':['core']})])
+    for condition in 'ABC':
+        config = {}
+        isolate_skill_settings(config, condition)
+        assert config['skillOverrides']['doctor'] == config['skillOverrides']['plugin-authoring'] == 'off'
+        assert ('Skill' in config['permissions']['deny']) == (condition == 'A')
+    assert 'http://127.0.0.1:31001/' in catalog_prompt('Task', 'http://127.0.0.1:31001')
     t8_source = json_file(ROOT / 'inputs/T8/eurostat.json')
     assert t8_source['size'] == [1, 1, 1, 4, 7]
     assert t8_source['dimension']['unit']['category']['index'] == {'KG_HAB': 0}

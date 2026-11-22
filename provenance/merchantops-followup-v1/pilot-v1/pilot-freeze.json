@@ -181,8 +181,8 @@
     "references/T8/expected.json": "21828420a75e5bace2fd81d3c11581bf1f433747bd283e729bec00b7745bf336",
     "references/T9/decisions.json": "dea441f0eacaf60edc597006d01d47ca79cd8386039b469a9d3505edfb9e5d70",
     "references/T9/router.txt": "1ff6b6461477fd1e1314fa4e54e87428619640ae4f10739a283f0d2119ad81dc",
-    "run.py": "965b70741f2da674d0cc20f3284ff75a442ff082563373597019bc8cb492b088",
-    "selfcheck.py": "612a2c972e92f1a4c54e1410e1778ef42787ac350a5a474d1676ad443ea0c248"
+    "run.py": "ef0fe3845fc3c11e81faae38554eba6815c9b3f44589c5e6b1546e2042e9ee33",
+    "selfcheck.py": "d0834f8bd0b2f46acc8ade2ae3bac9b2f392a43eba2e9d79989858a8988d74bd"
   },
   "original_files": {
     "run.py": "222a6ba3836df63b8a414186920b817c55498483c1714e445cce386cf02a6a13",

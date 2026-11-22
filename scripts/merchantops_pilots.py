@@ -144,9 +144,7 @@ def execute(runner, grade, row, attempt):
                   str(PROJECT/'reports'),str(PROJECT/'scoring'),str(RUNTIME/'skills'),str(PROJECT/'selfcheck')]
         deny = ['Agent','Task','WebSearch','WebFetch','Skill(init *)','Skill(security-review *)']
         deny += [f'{tool}(/{path}/**)' for path in hidden for tool in ('Read','Grep','Glob','Edit','Write')]
-        if condition=='A':
-            deny.append('Skill')
-        runner.save(settings,{'disableBundledSkills':True,'disableClaudeAiConnectors':True,
+        config = {
                     'permissions':{'defaultMode':'dontAsk','allow':tools,'deny':deny},
                     'sandbox':{'enabled':True,'failIfUnavailable':True,'allowUnsandboxedCommands':False,
                     'autoAllowBashIfSandboxed':True,
@@ -156,7 +154,9 @@ def execute(runner, grade, row, attempt):
                                                str(runner.AUTH),str(Path.home()/'.local/bin'),
                                                str(work)],
                                   'allowWrite':[str(work)], 'denyWrite':[str(work/'.claude')]},
-                    'network':network}})
+                    'network':network}}
+        old.isolate_skill_settings(config,condition)
+        runner.save(settings,config)
         cmd = runner.arguments(row['model'],','.join(tools),settings,mcp,22)
         prompt = (work/'TASK.md').read_text()
         (attempt/'prompt.txt').write_text(prompt)
@@ -166,7 +166,7 @@ def execute(runner, grade, row, attempt):
         configuration = runner.env()
         configuration.update({k:v for k,v in direct.items() if k != "HOME"})
         configuration.update(agent_extra)
-        configuration.update(CLAUDE_CODE_DISABLE_BUNDLED_SKILLS='1')
+        configuration = old.isolated_skill_env(configuration)
         with (attempt/'session.jsonl').open('w') as record:
             events, result = runner.agent_call(cmd,prompt,work,configuration,record)
         with (attempt/'session.jsonl').open() as record:
@@ -238,7 +238,9 @@ def main():
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:
             raise SystemExit('Pilot batch already active') from None
-        subprocess.run([sys.executable,str(OLD),'--run'],check=True)
+        upstream = subprocess.run([sys.executable,str(OLD),'--run'])
+        if upstream.returncode:
+            raise SystemExit(upstream.returncode)
         grade = load('pilot_grade',REFERENCE/'pilot_grade.py')
         for row in rows:
             if ready(row):

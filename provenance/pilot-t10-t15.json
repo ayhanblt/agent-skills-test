@@ -545,7 +545,7 @@
     "provenance/pilot-python.lock": "dc4c7ffc2a189aaa6e8ad43b58e273fd154c6de63060387fb2d910fe8af1e938",
     "provenance/pilot-skill-sources.json": "ceba82befa52e33eb49174ca8e3741af5b52c5a20aa02e749af84993772b713c",
     "scripts/merchantops_pilot_selfcheck.py": "58a8f34e0569015b4de561b31252433bc0b77983e6949db9df3c0cad223bf84c",
-    "scripts/merchantops_pilots.py": "8c45bd9715292f5ac4f16f36b41a5ecb7dc561d2e7232401ce3895cba50c16c8",
+    "scripts/merchantops_pilots.py": "baa91ca58ddce58b866341073dad7b8acd490c62c0820648f2e5c54e24177223",
     "selfcheck/pilot-render.mjs": "fd83229c367bb7229c0de4f302f8d1b196c9fc481b0b08173dd5236b58cee06d",
     "selfcheck/pilot-test.mjs": "9126cdbea8e1df0548257cae1120bbc6d89d360b7b523d944a449a1cf469f55a",
     "selfcheck/pilot-video.jsx": "4cc647bc7a378bd0f2100ab77220af7bcb506d0d06a123e2976cb6dd05b5cb0e",

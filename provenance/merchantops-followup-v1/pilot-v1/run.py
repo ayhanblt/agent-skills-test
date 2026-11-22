@@ -204,24 +204,51 @@ def skill_policy(row, outfile, prompt):
     return prompt
 
 
+def isolated_skill_env(env):
+    return dict(env, CLAUDE_CODE_DISABLE_BUNDLED_SKILLS='1',
+                DISABLE_DOCTOR_COMMAND='1', DISABLE_PLUGIN_AUTOLOAD='1')
+
+
+def isolate_skill_settings(data, condition):
+    blocked = ('doctor', 'checkup', 'plugin-authoring', 'init', 'security-review')
+    data.update(disableBundledSkills=True, disableClaudeAiConnectors=True,
+                skillOverrides={name: 'off' for name in blocked},
+                enabledPlugins={'cc-plugin-plugin-authoring@builtin': False})
+    deny = data.setdefault('permissions', {}).setdefault('deny', [])
+    deny.extend(f'Skill({name} *)' for name in blocked)
+    if condition == 'A':
+        deny.append('Skill')
+
+
+def catalog_prompt(prompt, origin):
+    return (prompt + f"\n\nCatalog start URL: {origin}/ . "
+            "If the search session starts blank or the browser restarts, open this URL in the same session.")
+
+
+class SkillIsolationError(ValueError):
+    pass
+
+
 def audit_skills(row, events):
     allowed = set() if row['condition'] == 'A' else {row['target_skill']}
+    if row['condition'] != 'A' and row['target_skill'] == 'agent-browser':
+        allowed.add('core')  # The pinned agent-browser SKILL.md declares this name.
     seen_init = False
     for line in events:
         event = json.loads(line)
         if event.get('subtype') == 'init':
             seen_init = True
             if set(event.get('skills', [])) - allowed:
-                raise ValueError('Unexpected skill advertised in candidate session')
+                raise SkillIsolationError('Beklenmedik skill görünürlüğü tespit edildi.')
         message = event.get('message', {})
         if not isinstance(message, dict):
             continue
         for item in message.get('content', []):
             if (isinstance(item, dict) and item.get('type') == 'tool_use'
                     and item.get('name') == 'Skill' and item.get('input', {}).get('skill') not in allowed):
-                raise ValueError('Unexpected Skill call in candidate session')
+                raise SkillIsolationError('Hedef dışı Skill çağrısı tespit edildi.')
     if not seen_init:
-        raise ValueError('Missing candidate initialization event')
+        raise SkillIsolationError('Oturum başlangıç kaydı eksik.')
 
 
 def execute(runner, row, attempt):
@@ -231,20 +258,19 @@ def execute(runner, row, attempt):
     original_agent, original_meeting = runner.agent_call, runner.meeting
 
     def environment():
-        return dict(original_env(), CLAUDE_CODE_DISABLE_BUNDLED_SKILLS='1')
+        return isolated_skill_env(original_env())
 
     def save_settings(path, data):
         if path.name == 'settings.json':
-            data['disableBundledSkills'] = True
-            data['disableClaudeAiConnectors'] = True
-            deny = data['permissions']['deny']
-            deny.extend(('Skill(init *)', 'Skill(security-review *)'))
-            if row['condition'] == 'A':
-                deny.append('Skill')
+            isolate_skill_settings(data, row['condition'])
         original_save(path, data)
 
     def agent_call(cmd, prompt, *args):
-        return original_agent(cmd, skill_policy(row, attempt / 'prompt.txt', prompt), *args)
+        if row['task'] == 'T7':
+            prompt = catalog_prompt(prompt, runner.CATALOG)
+        prompt = skill_policy(row, attempt / 'prompt.txt', prompt)
+        (attempt / 'prompt.txt').write_text(prompt)
+        return original_agent(cmd, prompt, *args)
 
     def meeting(cmd, prompt, *args):
         return original_meeting(cmd, skill_policy(row, attempt / 'prompt.txt', prompt), *args)
@@ -366,8 +392,9 @@ def main():
                 try:
                     result = execute(runner, row, attempt)
                 except Exception as exc:
-                    runner.save(attempt / 'failure.json', {'error_type': type(exc).__name__})
-                    raise SystemExit(f"{row['run_id']} stopped ({type(exc).__name__}). Resume with --run.") from None
+                    reason = str(exc) if isinstance(exc, SkillIsolationError) else type(exc).__name__
+                    runner.save(attempt / 'failure.json', {'error_type': type(exc).__name__, 'reason': reason})
+                    raise SystemExit(f"{row['run_id']} stopped ({reason}). Resume with --run.") from None
                 runner.save(attempt / 'result.json', result)
                 runner.save(slot / 'complete.json', result)
 
