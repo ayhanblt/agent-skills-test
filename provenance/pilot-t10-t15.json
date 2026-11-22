@@ -545,7 +545,8 @@
     "provenance/pilot-python.lock": "dc4c7ffc2a189aaa6e8ad43b58e273fd154c6de63060387fb2d910fe8af1e938",
     "provenance/pilot-skill-sources.json": "ceba82befa52e33eb49174ca8e3741af5b52c5a20aa02e749af84993772b713c",
     "scripts/merchantops_pilot_selfcheck.py": "58a8f34e0569015b4de561b31252433bc0b77983e6949db9df3c0cad223bf84c",
-    "scripts/merchantops_pilots.py": "baa91ca58ddce58b866341073dad7b8acd490c62c0820648f2e5c54e24177223",
+    "scripts/merchantops_pilots.py": "37464ab9e0db4253bbc86580f192772fd406632da93b76b0923e6ca0603f024c",
+    "scripts/pilot_soffice.py": "bb0a265804711a4fa1db0f34a09fc309e5639c56d6652a347651c3a67e9e0497",
     "selfcheck/pilot-render.mjs": "fd83229c367bb7229c0de4f302f8d1b196c9fc481b0b08173dd5236b58cee06d",
     "selfcheck/pilot-test.mjs": "9126cdbea8e1df0548257cae1120bbc6d89d360b7b523d944a449a1cf469f55a",
     "selfcheck/pilot-video.jsx": "4cc647bc7a378bd0f2100ab77220af7bcb506d0d06a123e2976cb6dd05b5cb0e",
@@ -554,7 +555,7 @@
     "tasks/T10/starter/form.pdf": "0e7295e3196381e9ae3be2ede92c0edd05ad8d41e2d89bb163114455b7f8154a",
     "tasks/T10/starter/ocr.swift": "f1bb47001584f099ba2c728759e45d56612a00ae96e320200b23b2b7244068ca",
     "tasks/T10/starter/packet.pdf": "29e3ac4b99fcb7257fc2acf70e61ec0e4c62f668d252f7d126f42277d5e57fb0",
-    "tasks/T11/starter/TASK.md": "6b36c063c88319a96266c321cb8eb1a4cadabeb924275e7615dc6a7c7cccfb72",
+    "tasks/T11/starter/TASK.md": "6538bed739d7894b401b216e7fae1fbd8c34ad8ed0364455efe6792ebf6bf1eb",
     "tasks/T11/starter/bookings.csv": "ab3c68bccbc1d6afe7601eedb617b9c05840cad93d3bb6041c36ffb44e9a9938",
     "tasks/T11/starter/budget.xlsx": "7c43987339c7d386c83afc6a7b13aa682a90a5cf2d25ca7b85d54b7d6c5a3586",
     "tasks/T12/starter/TASK.md": "c70c949ecf03bc50ebbfb2b8ced3e1ca48435990a347f21bd6bc0b9f1418081c",
@@ -575,6 +576,7 @@
     "postgres": "postgres (PostgreSQL) 14.17 (Homebrew)",
     "python3": "Python 3.13.2"
   },
+  "office_sha256": "7f9773c4a5b50615b7477f761b5f6bdd60d1b05bc12793be60ef16a8c9941648",
   "ocr_sha256": "840a3c43844b9abd174d620d961e51d8e418d401f0f2b446fcb282615b1e041a",
   "pilot_headless_sha256": "aa25f2e795c02d5cb5ef5d6987745cc5bbe7d8bea58827390c7a4c81c8d2dd7b",
   "browser_runtime": {

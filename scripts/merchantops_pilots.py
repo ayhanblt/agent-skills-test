@@ -18,6 +18,9 @@ OLD = PROJECT/'provenance/merchantops-followup-v1/pilot-v1/run.py'
 RUNTIME = PROJECT/'.local/pilot-tools'
 PYTHON = RUNTIME/'python/bin/python3'
 CHROME = RUNTIME/'chrome/chrome-headless-shell'
+OFFICE = (Path.home()/'.cache/codex-runtimes/codex-primary-runtime/dependencies/native'
+          /'libreoffice-headless/libreoffice/LibreOfficeDev.app/Contents/MacOS/soffice')
+OFFICE_SHIM = PROJECT/'scripts/pilot_soffice.py'
 REFERENCE = PROJECT/'private-tests'
 FREEZE = PROJECT/'provenance/pilot-t10-t15.json'
 SKILL_PIN = PROJECT/'provenance/pilot-skill-sources.json'
@@ -65,7 +68,7 @@ def tool_path(inherited):
 def baseline(runner):
     public = [p for t in TASKS for p in starter(t).iterdir() if p.is_file()]
     private = [REFERENCE/'pilot_grade.py',REFERENCE/'pilot-T12.json',
-               PROJECT/'scripts/merchantops_pilots.py',PROJECT/'scripts/merchantops_pilot_selfcheck.py',
+               PROJECT/'scripts/merchantops_pilots.py',PROJECT/'scripts/merchantops_pilot_selfcheck.py',OFFICE_SHIM,
                SKILL_PIN, PROJECT/'provenance/pilot-npm-lock.json', PROJECT/'provenance/pilot-python.lock',
                *sorted((PROJECT/'selfcheck').glob('pilot-*'))]
     skill_files = [p for name in TASKS.values() for p in (RUNTIME/'skills'/name).rglob('*') if p.is_file()]
@@ -82,7 +85,7 @@ def baseline(runner):
         line = subprocess.check_output(cmd,text=True).splitlines()[0]
         runtime[Path(cmd[0]).name] = line
     return {'schema':1, 'matrix':matrix(),'files':{str(p.relative_to(PROJECT)):old.digest(p)
-            for p in sorted(public+private+skill_files)},'runtime':runtime,'ocr_sha256':old.digest(RUNTIME/'ocr'),'pilot_headless_sha256':old.digest(CHROME),'browser_runtime':runner.runtime()}
+            for p in sorted(public+private+skill_files)},'runtime':runtime,'office_sha256':old.digest(OFFICE),'ocr_sha256':old.digest(RUNTIME/'ocr'),'pilot_headless_sha256':old.digest(CHROME),'browser_runtime':runner.runtime()}
 
 
 def local_env(runner, stage, work):
@@ -95,6 +98,30 @@ def local_env(runner, stage, work):
     if work.name == 'work':
         (work/'node_modules').symlink_to(RUNTIME/'npm/node_modules',target_is_directory=True)
     return settings
+
+
+def office_tools(work, env):
+    tool_dir = work/'.office'
+    tool_dir.mkdir()
+    shim = tool_dir/'soffice'
+    shutil.copyfile(OFFICE_SHIM, shim)
+    shim.chmod(0o755)
+    (tool_dir/'libreoffice').symlink_to(shim.name)
+    env.update(PATH=str(tool_dir)+os.pathsep+env['PATH'], TMPDIR=str(tool_dir),
+               PILOT_SOFFICE_BINARY=str(OFFICE), PILOT_OFFICE_TEMP=str(tool_dir))
+
+
+def save_partial_session(runner, record, error):
+    partial = error.stdout or ''
+    if isinstance(partial, bytes):
+        partial = partial.decode('utf-8', errors='replace')
+    for line in partial.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict):
+            record.write(runner.sanitized(event) + '\n')
 
 
 def grade_candidate(grade, row, work, env):
@@ -116,6 +143,8 @@ def execute(runner, grade, row, attempt):
         work = stage/'work'
         shutil.copytree(starter(task),work)
         direct = local_env(runner,stage,work)
+        if task == 'T11':
+            office_tools(work,direct)
         if task == 'T10':
             shutil.copyfile(RUNTIME/'ocr',work/'ocr')
             (work/'ocr').chmod(0o755)
@@ -152,7 +181,7 @@ def execute(runner, grade, row, attempt):
                                   'allowRead':[str(RUNTIME/'python'),str(RUNTIME/'npm'),
                                                str(CHROME.parent),
                                                str(runner.AUTH),str(Path.home()/'.local/bin'),
-                                               str(work)],
+                                               str(work)]+([str(OFFICE.parents[2])] if task == 'T11' else []),
                                   'allowWrite':[str(work)], 'denyWrite':[str(work/'.claude')]},
                     'network':network}}
         old.isolate_skill_settings(config,condition)
@@ -168,7 +197,11 @@ def execute(runner, grade, row, attempt):
         configuration.update(agent_extra)
         configuration = old.isolated_skill_env(configuration)
         with (attempt/'session.jsonl').open('w') as record:
-            events, result = runner.agent_call(cmd,prompt,work,configuration,record)
+            try:
+                events, result = runner.agent_call(cmd,prompt,work,configuration,record)
+            except subprocess.TimeoutExpired as error:
+                save_partial_session(runner,record,error)
+                raise
         with (attempt/'session.jsonl').open() as record:
             old.audit_skills(row,record)
         models = {event['message'].get('model') for event in events if event.get('type')=='assistant'
